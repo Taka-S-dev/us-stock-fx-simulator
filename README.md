@@ -1,5 +1,9 @@
 # FX & US Stock Break-even Simulator
 
+## 🔗 Live Demo
+
+**[https://us-stock-fx-simulator.vercel.app/](https://us-stock-fx-simulator.vercel.app/)**
+
 ## 概要
 
 米国株を購入した際の **株価 × 為替** の組み合わせに対し、  
