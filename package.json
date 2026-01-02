@@ -1,0 +1,48 @@
+{
+  "name": "fx-simulator",
+  "version": "1.0.0",
+  "description": "米国株損益分岐シミュレーター - 為替レートと株価の2軸で損益を可視化するWebアプリケーション",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "npx http-server -p 8000 -c-1",
+    "build": "echo 'No build process required for static HTML'",
+    "test": "echo 'No tests specified'",
+    "lint": "echo 'No linter configured'"
+  },
+  "keywords": [
+    "investment",
+    "simulator",
+    "forex",
+    "stock",
+    "profit-loss",
+    "visualization",
+    "javascript",
+    "plotly",
+    "bootstrap",
+    "responsive"
+  ],
+  "author": {
+    "name": "組み込みエンジニア出身のWeb開発者",
+    "email": "no-reply@example.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/fx-simulator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/fx-simulator/issues"
+  },
+  "homepage": "https://github.com/yourusername/fx-simulator#readme",
+  "devDependencies": {},
+  "dependencies": {},
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

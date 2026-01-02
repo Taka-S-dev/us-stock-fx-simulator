@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>米国株 損益分岐シミュレーター</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    />
+  </head>
+  <body class="bg-light">
+    <div class="container my-4">
+      <h1 class="text-center site-title">
+        損益分岐シミュレーター（米国株 × 為替）
+      </h1>
+
+      <div class="info-actions d-md-none mb-4 p-3 rounded-3">
+        <div class="row g-3">
+          <div class="col-6">
+            <button
+              type="button"
+              class="btn btn-outline-info btn-sm w-100"
+              id="btn-overview-modal"
+            >
+              ℹ️ アプリ概要
+            </button>
+          </div>
+          <div class="col-6">
+            <button
+              type="button"
+              class="btn btn-outline-warning btn-sm w-100"
+              id="btn-disclaimer-modal"
+            >
+              ⚠️ 免責事項
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-none d-md-block">
+        <div class="accordion" id="infoAccordion">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOverview">
+              <button
+                class="accordion-button collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#overview"
+                aria-expanded="false"
+                aria-controls="overview"
+              >
+                ℹ️ アプリの概要・使い方
+              </button>
+            </h2>
+            <div
+              id="overview"
+              class="accordion-collapse collapse"
+              aria-labelledby="headingOverview"
+              data-bs-parent="#infoAccordion"
+            >
+              <div class="accordion-body">
+                <div class="alert alert-info">
+                  <h5>📊 米国株 × 為替 損益分岐シミュレーター</h5>
+                  <p class="mb-0">
+                    このアプリは複数回に分けて購入した米国株の損益を「株価 ×
+                    為替レート」の2軸でシミュレートするツールです。
+                  </p>
+                </div>
+                <div class="mt-3">
+                  <h6>🎯 主な機能</h6>
+                  <ul>
+                    <li>複数回の購入履歴を入力</li>
+                    <li>株価と為替レートの範囲を設定</li>
+                    <li>損益分岐グラフをリアルタイム表示</li>
+                    <li>ピン機能で特定のポイントをマーク</li>
+                    <li>設定の保存・復元</li>
+                  </ul>
+                </div>
+                <div class="mt-3">
+                  <h6>📱 使い方</h6>
+                  <ol>
+                    <li>「📥 購入情報」で購入履歴を入力</li>
+                    <li>「📈 表示範囲」でグラフの表示範囲を調整</li>
+                    <li>グラフ上で損益分岐を確認</li>
+                    <li>「📍 ピン追加」で重要なポイントをマーク</li>
+                  </ol>
+                </div>
+                <div class="mt-3">
+                  <h6>📞 お問い合わせ</h6>
+                  <p class="mb-0">
+                    使ってみてのご意見や改善要望など、ぜひお気軽にお寄せください！<br />
+                    <a
+                      href="https://forms.gle/Af6RSyhgZY35cPH2A"
+                      target="_blank"
+                      rel="noopener"
+                      >ご意見・ご要望（Googleフォーム）</a
+                    >
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingDisclaimer">
+              <button
+                class="accordion-button collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#disclaimer"
+                aria-expanded="false"
+                aria-controls="disclaimer"
+              >
+                ⚠️ 免責事項
+              </button>
+            </h2>
+            <div
+              id="disclaimer"
+              class="accordion-collapse collapse"
+              aria-labelledby="headingDisclaimer"
+              data-bs-parent="#infoAccordion"
+            >
+              <div class="accordion-body">
+                <div class="alert alert-warning">
+                  <h5>📋 重要なお知らせ</h5>
+                  <p class="mb-0">
+                    投資判断は自己責任でお願いします。本アプリは情報提供目的です。
+                  </p>
+                </div>
+                <div class="mt-3">
+                  <h6>🔍 免責事項</h6>
+                  <ul>
+                    <li>本アプリは投資助言ではありません</li>
+                    <li>
+                      為替レートは参考値であり、実際の取引価格とは異なる場合があります
+                    </li>
+                    <li>
+                      過去のデータは将来の結果を保証するものではありません
+                    </li>
+                    <li>投資に関する決定は、必ずご自身で判断してください</li>
+                    <li>
+                      本アプリの利用により生じた損害について、一切の責任を負いかねます
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-md-4">
+          <div class="d-none d-md-block">
+            <div class="accordion-card open" id="purchase-accordion">
+              <div class="accordion-header" id="purchase-header">
+                <span class="accordion-title"
+                  >📥 <strong>購入情報の入力</strong></span
+                >
+                <span class="accordion-icon">
+                  <i class="bi bi-chevron-down"></i>
+                </span>
+              </div>
+
+              <div class="accordion-body" id="purchase-body">
+                <form>
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm mb-3"
+                    id="addPurchase"
+                  >
+                    ＋購入履歴を追加
+                  </button>
+
+                  <div id="purchase-container"></div>
+                </form>
+              </div>
+            </div>
+
+            <div class="accordion-card open" id="range-accordion">
+              <div
+                class="accordion-header d-flex justify-content-between align-items-center"
+              >
+                <span class="accordion-title"
+                  >📈 <strong>表示範囲</strong></span
+                >
+                <span class="accordion-icon">
+                  <i class="bi bi-chevron-down"></i>
+                </span>
+              </div>
+              <div class="accordion-body" id="range-body">
+                <!-- 為替範囲 -->
+                <div class="slider-group p-2 mb-3">
+                  <label class="fw-bold mb-1">為替範囲（円/USD）</label>
+                  <div class="d-flex justify-content-between mb-2">
+                    <input
+                      type="number"
+                      id="fx-min-input"
+                      class="form-control form-control-sm"
+                      style="width: 45%"
+                    />
+                    <input
+                      type="number"
+                      id="fx-max-input"
+                      class="form-control form-control-sm"
+                      style="width: 45%"
+                    />
+                  </div>
+                  <div id="fx-slider"></div>
+                </div>
+
+                <!-- 株価範囲 -->
+                <div class="slider-group p-2 mb-3">
+                  <label class="fw-bold mb-1">株価範囲（USD）</label>
+                  <div class="d-flex justify-content-between mb-2">
+                    <input
+                      type="number"
+                      id="price-min-input"
+                      class="form-control form-control-sm"
+                      style="width: 45%"
+                    />
+                    <input
+                      type="number"
+                      id="price-max-input"
+                      class="form-control form-control-sm"
+                      style="width: 45%"
+                    />
+                  </div>
+                  <div id="price-slider"></div>
+                </div>
+                <div class="form-check form-switch mt-2">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="price-max-toggle"
+                  />
+                  <label class="form-check-label" for="price-max-toggle">
+                    株価範囲（最大値）を最大 $5000 に切り替え
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-card mt-3" id="pin-accordion">
+              <div class="accordion-header" id="pin-header">
+                <span class="accordion-title">
+                  📍 <strong>売却候補ピン追加</strong>
+                </span>
+                <span class="accordion-icon">
+                  <i class="bi bi-chevron-down"></i>
+                </span>
+              </div>
+
+              <div class="accordion-body" id="pin-body">
+                <div class="mb-3">
+                  <label>売却株価（USD）:</label>
+                  <input
+                    type="number"
+                    id="pin-price"
+                    class="form-control"
+                    step="0.1"
+                    value="150"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label>為替（円/USD）:</label>
+                  <input
+                    type="number"
+                    id="pin-fx"
+                    class="form-control"
+                    step="0.1"
+                    value="140"
+                  />
+                </div>
+                <button type="button" class="btn btn-info" id="add-pin">
+                  ピンを追加
+                </button>
+
+                <div class="mt-3" id="pin-settings"></div>
+              </div>
+            </div>
+
+            <div class="accordion-card mt-3" id="save-accordion">
+              <div class="accordion-header" id="save-header">
+                <span class="accordion-title">
+                  💾 <strong>状態保存・復元</strong>
+                </span>
+                <span class="accordion-icon">
+                  <i class="bi bi-chevron-down"></i>
+                </span>
+              </div>
+
+              <div class="accordion-body" id="save-body">
+                <div class="mb-3">
+                  <label>保存名:</label>
+                  <input
+                    type="text"
+                    id="save-name"
+                    class="form-control"
+                    placeholder="設定名を入力"
+                  />
+                </div>
+                <div class="d-flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    class="btn btn-success"
+                    id="btn-save-state"
+                  >
+                    保存
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-info"
+                    id="btn-restore-state"
+                  >
+                    復元
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger"
+                    id="btn-delete-state"
+                  >
+                    削除
+                  </button>
+                </div>
+
+                <div class="mb-3">
+                  <label>保存済み一覧:</label>
+                  <select id="saved-states" class="form-control">
+                    <option disabled selected>保存済み一覧</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-md-none">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <button
+                  type="button"
+                  class="btn btn-primary w-100"
+                  id="btn-purchase-modal"
+                >
+                  📥 購入情報
+                </button>
+              </div>
+              <div class="col-6">
+                <button
+                  type="button"
+                  class="btn btn-secondary w-100"
+                  id="btn-range-modal"
+                >
+                  📈 表示範囲
+                </button>
+              </div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <button
+                  type="button"
+                  class="btn btn-info w-100"
+                  id="btn-pin-modal"
+                >
+                  🎯 売却候補ピン追加
+                </button>
+              </div>
+              <div class="col-6">
+                <button
+                  type="button"
+                  class="btn btn-success w-100"
+                  id="btn-save-modal"
+                >
+                  💾 保存・復元
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <!-- ローディング表示 -->
+          <div
+            id="loading-container"
+            class="text-center py-5"
+            style="display: none"
+          >
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">為替レートを取得中...</p>
+          </div>
+
+          <!-- グラフ表示エリア -->
+          <div id="graph-container">
+            <div id="plot"></div>
+            <div id="average-info" class="mt-3 p-3 bg-light rounded"></div>
+
+            <div class="mt-3 d-flex gap-2 justify-content-center">
+              <div
+                id="btn-post-x"
+                class="btn btn-outline-secondary btn-sm btn-fixed-width"
+                role="button"
+                tabindex="0"
+              >
+                𝕏でつぶやく
+              </div>
+              <div
+                id="btn-save-image"
+                class="btn btn-outline-secondary btn-sm btn-fixed-width"
+                role="button"
+                tabindex="0"
+              >
+                <i class="bi bi-camera"></i> 画像を保存
+              </div>
+            </div>
+
+            <div
+              id="mobile-hover-info"
+              class="position-fixed border rounded p-3 shadow-lg"
+              style="
+                display: none;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                max-width: 280px;
+                font-size: 0.85rem;
+                background: linear-gradient(135deg, #ffffff 0%, #fff5f5 100%);
+                border: 2px solid #dc3545 !important;
+                box-shadow: 0 4px 20px rgba(220, 53, 69, 0.2);
+              "
+            >
+              <div class="text-center mb-2">
+                <strong class="text-danger" style="font-size: 1rem"
+                  >🎯 選択位置の売却情報</strong
+                >
+                <button
+                  type="button"
+                  class="btn-close btn-close-sm ms-2"
+                  id="close-hover-info"
+                  style="background-color: #dc3545; opacity: 0.8"
+                ></button>
+              </div>
+              <div id="hover-details" class="small"></div>
+            </div>
+
+            <!-- 右側スクロールボタン -->
+            <div class="scroll-controls">
+              <div class="scroll-button scroll-up" id="scroll-up">
+                <i class="bi bi-chevron-up"></i>
+              </div>
+              <div class="scroll-button scroll-down" id="scroll-down">
+                <i class="bi bi-chevron-down"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module" src="main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <div class="toast-container position-fixed">
+      <div
+        id="toast-message"
+        class="toast align-items-center text-white bg-success border-0"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+      >
+        <div class="d-flex">
+          <div class="toast-body" id="toast-body">✅ 保存しました！</div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="mobileModal"
+      tabindex="-1"
+      aria-labelledby="mobileModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="mobileModalLabel">設定</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body" id="mobileModalBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="rangeModal"
+      tabindex="-1"
+      aria-labelledby="rangeModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="rangeModalLabel">📈 表示範囲の設定</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">為替レート範囲（円/USD）</label>
+              <div class="d-flex justify-content-between mb-2">
+                <input
+                  type="number"
+                  id="fx-min-input-modal"
+                  class="form-control form-control-sm"
+                  style="width: 45%"
+                />
+                <input
+                  type="number"
+                  id="fx-max-input-modal"
+                  class="form-control form-control-sm"
+                  style="width: 45%"
+                />
+              </div>
+              <div id="fx-slider-modal"></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">株価範囲（USD）</label>
+              <div class="d-flex justify-content-between mb-2">
+                <input
+                  type="number"
+                  id="price-min-input-modal"
+                  class="form-control form-control-sm"
+                  style="width: 45%"
+                />
+                <input
+                  type="number"
+                  id="price-max-input-modal"
+                  class="form-control form-control-sm"
+                  style="width: 45%"
+                />
+              </div>
+              <div id="price-slider-modal"></div>
+            </div>
+            <div class="form-check form-switch mt-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="price-max-toggle-modal"
+              />
+              <label class="form-check-label" for="price-max-toggle-modal">
+                株価範囲（最大値）を最大 $5000 に切り替え
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
