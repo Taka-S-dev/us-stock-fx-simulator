@@ -1,6 +1,6 @@
 # FX & US Stock Break-even Simulator
 
-[![CI](https://github.com/Taka-S-dev/us-stock-fx-simulator/workflows/CI/badge.svg)](https://github.com/Taka-S-dev/us-stock-fx-simulator/actions)
+[![CI](https://github.com/Taka-S-dev/us-stock-fx-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Taka-S-dev/us-stock-fx-simulator/actions)
 
 ## 🔗 Live Demo
 
@@ -61,6 +61,9 @@
 
 ```
 us-stock-fx-simulator/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── public/
 │   ├── controller/          # イベント制御・状態管理
 │   │   ├── events.js       # ユーザーイベント処理
