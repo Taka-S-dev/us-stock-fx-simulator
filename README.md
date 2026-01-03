@@ -1,5 +1,7 @@
 # FX & US Stock Break-even Simulator
 
+[![CI](https://github.com/Taka-S-dev/us-stock-fx-simulator/workflows/CI/badge.svg)](https://github.com/Taka-S-dev/us-stock-fx-simulator/actions)
+
 ## 🔗 Live Demo
 
 **[https://us-stock-fx-simulator.vercel.app/](https://us-stock-fx-simulator.vercel.app/)**
