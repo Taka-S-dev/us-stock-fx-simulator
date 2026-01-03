@@ -93,6 +93,25 @@ us-stock-fx-simulator/
 
 ---
 
+## アーキテクチャ
+
+### ファイル構成
+
+```mermaid
+graph LR
+View[📁 view<br/>画面表示] --> Controller[📁 controller<br/>制御]
+Controller --> Model[📁 model<br/>計算・保存]
+Controller -->|更新| View
+```
+
+**MVC パターンで責務分離:**
+
+- **view/**: グラフ描画・フォーム管理（UI のみ）
+- **controller/**: イベント処理・状態管理
+- **model/**: 損益計算・データ保存（UI 非依存）
+
+---
+
 ## 設計方針
 
 本ツールでは、規模が小さくても **構造を意識した設計** を重視しました。
