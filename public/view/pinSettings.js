@@ -1,4 +1,4 @@
-import { customPins, removePin } from "../model/pins.js";
+import { getPins, removePin } from "../controller/modelFacade.js";
 
 export function renderPinSettings() {
   const container = document.getElementById("pin-settings");
@@ -7,7 +7,8 @@ export function renderPinSettings() {
   }
   container.innerHTML = "";
 
-  customPins.forEach((p, index) => {
+  const pins = getPins();
+  pins.forEach((p, index) => {
     const id = `pin-toggle-${index}`;
     const div = document.createElement("div");
     div.className = "d-flex align-items-center justify-content-between mb-1";

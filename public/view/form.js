@@ -1,4 +1,4 @@
-import { getPurchases, setPurchases } from "../model/calc.js"; // ✅ setPurchases を追加
+import { getPurchases, setPurchases } from "../controller/modelFacade.js"; // ✅ model依存をcontroller経由に
 
 /**
  * 購入情報の入力値を取得・検証

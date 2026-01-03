@@ -1,48 +1,33 @@
 {
   "name": "fx-simulator",
   "version": "1.0.0",
-  "description": "米国株損益分岐シミュレーター - 為替レートと株価の2軸で損益を可視化するWebアプリケーション",
+  "description": "米国株損益分岐シミュレーター - 為替レートと株価の2軸で損益を可視化",
   "main": "index.html",
   "scripts": {
     "start": "python -m http.server 8000",
     "dev": "npx http-server -p 8000 -c-1",
     "build": "echo 'No build process required for static HTML'",
-    "test": "echo 'No tests specified'",
-    "lint": "echo 'No linter configured'"
+    "test": "vitest run"
   },
   "keywords": [
     "investment",
-    "simulator",
-    "forex",
-    "stock",
-    "profit-loss",
+    "stock-market",
     "visualization",
-    "javascript",
     "plotly",
-    "bootstrap",
-    "responsive"
+    "automation"
   ],
-  "author": {
-    "name": "組み込みエンジニア出身のWeb開発者",
-    "email": "no-reply@example.com"
-  },
+  "author": "Taka-S-dev (https://github.com/Taka-S-dev)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/fx-simulator.git"
+    "url": "git+https://github.com/Taka-S-dev/us-stock-fx-simulator.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/fx-simulator/issues"
+    "url": "https://github.com/Taka-S-dev/us-stock-fx-simulator/issues"
   },
-  "homepage": "https://github.com/yourusername/fx-simulator#readme",
-  "devDependencies": {},
-  "dependencies": {},
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ],
-  "engines": {
-    "node": ">=14.0.0"
-  }
+  "homepage": "https://github.com/Taka-S-dev/us-stock-fx-simulator#readme",
+  "devDependencies": {
+    "vitest": "^4.0.16"
+  },
+  "type": "module"
 }

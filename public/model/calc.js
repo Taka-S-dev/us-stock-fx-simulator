@@ -8,6 +8,72 @@
  * @param {Array} pins - ピン情報配列
  * @returns {Object} グラフ描画用データ
  */
+
+/**
+ * 購入履歴の集計（View/Controller非依存）
+ * - 証券ソフトなどの約定結果との突合に使えるよう、合計コスト（円/ドル）を返す
+ * - 注意: 現時点では手数料・税・為替スプレッド等は未考慮（必要ならpurchaseに明示的に持たせて加算する）
+ * @param {Array<{price:number, fx:number, qty:number, feeYen?:number, feeUsd?:number}>} purchases
+ * @returns {{
+ *   totalQty:number,
+ *   totalCostYen:number,
+ *   totalCostUsd:number,
+ *   avgFx:number,
+ *   avgPrice:number
+ * }}
+ */
+export function aggregatePurchases(purchases) {
+  if (!Array.isArray(purchases) || purchases.length === 0) {
+    return {
+      totalQty: 0,
+      totalCostYen: 0,
+      totalCostUsd: 0,
+      avgFx: 0,
+      avgPrice: 0,
+    };
+  }
+
+  const totalQty = purchases.reduce((acc, p) => acc + (Number(p.qty) || 0), 0);
+  if (totalQty === 0) {
+    return {
+      totalQty: 0,
+      totalCostYen: 0,
+      totalCostUsd: 0,
+      avgFx: 0,
+      avgPrice: 0,
+    };
+  }
+
+  const totalCostYen = purchases.reduce((acc, p) => {
+    const price = Number(p.price) || 0;
+    const fx = Number(p.fx) || 0;
+    const qty = Number(p.qty) || 0;
+    const feeYen = Number(p.feeYen) || 0;
+    // 円建ての手数料などを purchase 単位で持たせる場合に加算できる
+    return acc + price * fx * qty + feeYen;
+  }, 0);
+
+  const totalCostUsd = purchases.reduce((acc, p) => {
+    const price = Number(p.price) || 0;
+    const qty = Number(p.qty) || 0;
+    const feeUsd = Number(p.feeUsd) || 0;
+    return acc + price * qty + feeUsd;
+  }, 0);
+
+  const avgFx =
+    purchases.reduce(
+      (acc, p) => acc + (Number(p.fx) || 0) * (Number(p.qty) || 0),
+      0
+    ) / totalQty;
+  const avgPrice =
+    purchases.reduce(
+      (acc, p) => acc + (Number(p.price) || 0) * (Number(p.qty) || 0),
+      0
+    ) / totalQty;
+
+  return { totalQty, totalCostYen, totalCostUsd, avgFx, avgPrice };
+}
+
 export function calculateGraphData(
   purchases,
   fxMin,
@@ -37,16 +103,12 @@ export function calculateGraphData(
     const maxPoints = 200; // グラフの解像度
 
     // 購入データの集計
-    const totalQty = purchases.reduce((acc, p) => acc + p.qty, 0);
-    const totalCost = purchases.reduce(
-      (acc, p) => acc + p.price * p.fx * p.qty,
-      0
-    );
-    const costDollar = purchases.reduce((acc, p) => acc + p.price * p.qty, 0);
-    const avgFx =
-      purchases.reduce((acc, p) => acc + p.fx * p.qty, 0) / totalQty;
-    const avgPrice =
-      purchases.reduce((acc, p) => acc + p.price * p.qty, 0) / totalQty;
+    const agg = aggregatePurchases(purchases);
+    const totalQty = agg.totalQty;
+    const totalCost = agg.totalCostYen;
+    const costDollar = agg.totalCostUsd;
+    const avgFx = agg.avgFx;
+    const avgPrice = agg.avgPrice;
 
     // 為替・株価の範囲を均等分割
     const fxVals = linspace(fxMin, fxMax, maxPoints);
@@ -93,13 +155,26 @@ export function calculateGraphData(
       }
     }
 
-    // ピン情報に損益計算を追加
+    // ピン情報に損益計算を追加（円表示は切り捨て仕様に統一）
     const enrichedPins = pins.map((p) => {
-      const profitY = p.fx * p.price * totalQty - totalCost;
+      const currentValueYen = Math.trunc(p.fx * p.price * totalQty);
+      const avgAcqYen = totalQty ? totalCost / totalQty : 0;
+      const { profitLossYen, profitLossRatePct } =
+        computeYenValuationTruncTowardZero(
+          avgAcqYen,
+          totalQty,
+          currentValueYen
+        );
+
       const profitU = p.price * totalQty - costDollar;
-      const rateY = `${((100 * profitY) / totalCost).toFixed(2)}%`;
-      const rateU = `${((100 * profitU) / costDollar).toFixed(2)}%`;
-      return { ...p, profitYen: profitY, rateYen: rateY, rateUsd: rateU };
+      const rateU = `${((100 * profitU) / (costDollar || 1)).toFixed(2)}%`;
+
+      return {
+        ...p,
+        profitYen: profitLossYen,
+        rateYen: `${profitLossRatePct}%`,
+        rateUsd: rateU,
+      };
     });
 
     breakEvenPoints.sort((a, b) => a.x - b.x);
@@ -113,6 +188,7 @@ export function calculateGraphData(
       breakEvenPoints,
       enrichedPins,
       totalQty,
+      totalCostYen: totalCost,
       costDollar,
     };
   } catch (error) {
@@ -137,9 +213,108 @@ export function calculateGraphData(
       breakEvenPoints: [],
       enrichedPins: [],
       totalQty: 0,
+      totalCostYen: 0,
       costDollar: 0,
     };
   }
+}
+
+/**
+ * テスト用（かつ実運用でも利用可能）: 小数桁を「0方向」に切り捨て
+ * 例) -1.239,2桁 -> -1.23 /  1.239,2桁 -> 1.23
+ */
+export function truncToDigitsTowardZero(x, digits) {
+  const m = 10 ** digits;
+  return Math.trunc(x * m) / m;
+}
+
+/**
+ * 小数桁を四捨五入
+ */
+export function roundToDigits(x, digits) {
+  const m = 10 ** digits;
+  return Math.round(x * m) / m;
+}
+
+/**
+ * テスト用（かつ実運用でも利用可能）: 円未満切り捨て（0方向）
+ */
+export function truncToIntYen(x) {
+  return Math.trunc(x);
+}
+
+/**
+ * テスト用純粋関数（某証券表示ロジック準拠の円評価）
+ * - UIやDOMに非依存
+ * - 取得総額(円)は「平均取得価額[円] × 数量」を円未満切り捨て
+ * - 損益(円) = 時価評価額[円] − 取得総額(円)
+ * - 損益率(%) = (損益 ÷ 取得総額) × 100 を小数2桁で0方向切り捨て
+ *
+ * @param {number} avgAcqYen - 平均取得価額（円/株）
+ * @param {number} qty - 数量（株）
+ * @param {number} currentValueYen - 時価評価額（円）
+ * @returns {{ totalAcqYen:number, profitLossYen:number, profitLossRatePct:number }}
+ */
+/**
+ * 円評価（中立名）: 取得総額は円未満切り捨て、損益率は小数2桁で0方向切り捨て
+ * （一般的な表示仕様を再現）
+ */
+export function computeYenValuationTruncTowardZero(
+  avgAcqYen,
+  qty,
+  currentValueYen
+) {
+  const totalAcqYen = truncToIntYen(
+    (Number(avgAcqYen) || 0) * (Number(qty) || 0)
+  );
+  const profitLossYen = (Number(currentValueYen) || 0) - totalAcqYen;
+  const profitLossRatePct =
+    totalAcqYen !== 0
+      ? truncToDigitsTowardZero((profitLossYen / totalAcqYen) * 100, 2)
+      : 0;
+  return { totalAcqYen, profitLossYen, profitLossRatePct };
+}
+
+/**
+ * USD評価の候補集合（丸め順の揺れに対応するため候補集合を返す）
+ * @param {number} avgAcqUsd
+ * @param {number} qty
+ * @param {number} currentPriceUsd
+ * @returns {{
+ *  currentValueUsd:number,
+ *  acqCandidates:number[],
+ *  pnlCandidates:Set<number>,
+ *  rateCandidates:Set<number>
+ * }}
+ */
+export function computeUsdValuationCandidates(avgAcqUsd, qty, currentPriceUsd) {
+  const q = Number(qty) || 0;
+  const avg = Number(avgAcqUsd) || 0;
+  const px = Number(currentPriceUsd) || 0;
+
+  const currentValueUsd = roundToDigits(px * q, 2);
+  const acqTotalRaw = avg * q;
+  const acqCandidates = [
+    acqTotalRaw,
+    roundToDigits(acqTotalRaw, 2),
+    truncToDigitsTowardZero(acqTotalRaw, 2),
+  ];
+
+  const pnlCandidates = new Set();
+  for (const acq of acqCandidates) {
+    pnlCandidates.add(roundToDigits(currentValueUsd - acq, 2));
+    pnlCandidates.add(truncToDigitsTowardZero(currentValueUsd - acq, 2));
+  }
+
+  const rateCandidates = new Set();
+  for (const acq of acqCandidates) {
+    if (acq === 0) continue;
+    const r = ((currentValueUsd - acq) / acq) * 100;
+    rateCandidates.add(roundToDigits(r, 2));
+    rateCandidates.add(truncToDigitsTowardZero(r, 2));
+  }
+
+  return { currentValueUsd, acqCandidates, pnlCandidates, rateCandidates };
 }
 
 /**

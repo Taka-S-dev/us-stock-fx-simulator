@@ -33,14 +33,23 @@
 - 複数購入（ナンピン）を考慮した計算
 - UI 操作に応じたリアルタイム再計算
 - モーダル UI による購入情報の管理
+- 状態の保存・復元機能
 
 ---
 
 ## 技術スタック
 
-- HTML / CSS / JavaScript（Vanilla JS）
-- グラフ描画：JavaScript ベースのチャートライブラリ
-- ビルドツール・フレームワークは未使用
+- **フロントエンド:** HTML / CSS / JavaScript（Vanilla JS）
+- **グラフ描画:** Plotly.js
+- **UI フレームワーク:** Bootstrap 5
+- **テスト:** Vitest
+- **デプロイ:** Vercel
+
+**主な外部ライブラリ:**
+
+- [Plotly.js](https://plotly.com/javascript/) - インタラクティブなグラフ描画
+- [Bootstrap 5](https://getbootstrap.com/) - レスポンシブ UI
+- [noUiSlider](https://refreshless.com/nouislider/) - 範囲選択スライダー
 
 ※ フレームワークに依存せず、
 状態管理および責務分離を自力で設計した場合に、
@@ -49,23 +58,37 @@
 ## プロジェクト構造
 
 ```
-fx_simulator/
-├── controller/          # イベント制御
-│   └── events.js       # ユーザーイベント処理
-├── model/               # データ・ビジネスロジック
-│   ├── calc.js         # 損益計算ロジック
-│   ├── pins.js         # ピン管理
-│   └── state.js        # 状態管理
-├── view/                # UI・表示ロジック
-│   ├── form.js         # フォーム管理
-│   ├── plot.js         # グラフ描画
-│   ├── pinSettings.js  # ピン設定UI
-│   ├── rangeSlider.js  # スライダー制御
-│   └── toast.js        # 通知表示
-├── index.html           # メインHTML
-├── main.js              # エントリーポイント
-├── styles.css           # スタイルシート
-└── README.md            # このファイル
+us-stock-fx-simulator/
+├── public/
+│   ├── controller/          # イベント制御・状態管理
+│   │   ├── events.js       # ユーザーイベント処理
+│   │   ├── graphController.js
+│   │   ├── modalEvents.js
+│   │   ├── modelFacade.js
+│   │   └── stateController.js
+│   ├── model/              # ビジネスロジック
+│   │   ├── calc.js         # 損益計算ロジック
+│   │   ├── pins.js         # ピン（注目ポイント）管理
+│   │   └── state.js        # 状態の保存・復元
+│   ├── view/               # UI・表示ロジック
+│   │   ├── form.js         # フォーム管理
+│   │   ├── plot.js         # グラフ描画
+│   │   ├── pinSettings.js  # ピン設定UI
+│   │   ├── rangeSlider.js  # スライダー制御
+│   │   ├── saveImage.js    # 画像保存機能
+│   │   └── toast.js        # 通知表示
+│   ├── utils/              # 共通ユーティリティ
+│   │   ├── stateUtils.js
+│   │   └── textContent.js
+│   ├── index.html          # メインHTML
+│   ├── main.js             # エントリーポイント
+│   └── styles.css          # スタイルシート
+├── tests/                  # テストファイル
+│   ├── calc.test.js
+│   ├── aggregate.test.js
+│   └── fixtures/           # テストデータ
+├── package.json
+└── README.md
 ```
 
 ---
@@ -74,14 +97,29 @@ fx_simulator/
 
 本ツールでは、規模が小さくても **構造を意識した設計** を重視しました。
 
-- MVC ライクな責務分離
-  - **Model**：損益計算ロジック
-  - **View**：DOM 操作・グラフ描画
-  - **Controller**：入力イベントと状態更新の仲介
-- 状態管理を一箇所に集約
-  - UI 状態・購入情報を `stateController` で一元管理
-- 計算ロジックと UI 更新処理の分離
-  - 将来的な UI 変更やフレームワーク移行を想定
+### MVC ライクな責務分離
+
+- **Model（`model/`）**：損益計算ロジック・データ管理
+  - View/Controller に依存しない純粋な計算処理
+  - 単体テスト可能な設計
+- **View（`view/`）**：DOM 操作・グラフ描画
+  - ビジネスロジックを持たない
+  - 再利用可能な UI コンポーネント
+- **Controller（`controller/`）**：入力イベントと状態更新の仲介
+  - Model と View を繋ぐ役割
+  - イベントハンドリング
+
+### 状態管理の一元化
+
+- UI 状態・購入情報を `stateController` で一元管理
+- LocalStorage を活用した永続化
+- 状態の検証・復元機能
+
+### 計算ロジックと UI の分離
+
+- 将来的な UI 変更やフレームワーク移行を想定
+- ロジック部分は独立してテスト可能
+- DOM 操作を View に集約
 
 あとから仕様を変えたり機能を足したりしやすいように、
 計算処理・画面表示・入力処理を
@@ -99,7 +137,9 @@ fx_simulator/
 ## 制約・割り切り
 
 - 型安全性（TypeScript）は未導入
-- 単体テストは未実装
+  → 今後 TypeScript 化を予定
+- テストカバレッジの可視化は未実装
+  → `vitest --coverage` で確認可能にする予定
 - 状態管理ライブラリは不使用
 
 本リポジトリは **完成品というより PoC（設計検証）** という位置づけです。
@@ -123,6 +163,23 @@ fx_simulator/
 - React / Vue などのフレームワークへの移行
 - ロジック部分のユニットテスト追加
 - UI/UX（モバイル対応・アクセシビリティ）の改善
+
+---
+
+## 開発者向け情報
+
+### npm スクリプト
+
+```bash
+# 開発サーバー起動
+npm run dev
+
+# テスト実行
+npm test
+
+# ビルド（静的HTMLのため不要）
+npm run build
+```
 
 ---
 

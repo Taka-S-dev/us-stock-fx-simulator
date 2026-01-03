@@ -1,0 +1,11 @@
+{
+  "symbol": "TICK_JPY",
+  "asof": "2025-01-01 17:00",
+  "qty": 3,
+  "avgAcqYen": 1200.5,
+  "currentPriceUsd": 7.9,
+  "fxJpyPerUsd": 120.0,
+  "currentValueYen": 2844,
+  "profitLossYen": -757,
+  "profitLossRatePct": -21.02
+}

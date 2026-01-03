@@ -1,4 +1,5 @@
 // plot.js 責務はグラフ描画のみ。
+import { computeYenValuationTruncTowardZero } from "../controller/modelFacade.js";
 
 // 指定座標での損益を計算する関数
 function calculateProfitAtPoint(fx, price, purchases, totalQty, costDollar) {
@@ -22,6 +23,7 @@ export function renderGraph(graphData, purchases) {
     enrichedPins,
     totalQty,
     costDollar,
+    totalCostYen,
   } = graphData;
 
   // 不正な購入情報のチェック
@@ -154,11 +156,22 @@ export function renderGraph(graphData, purchases) {
     },
   };
 
+  // 表示範囲（スライダー由来）
+  const xMin = fxVals[0];
+  const xMax = fxVals[fxVals.length - 1];
+  const yMin = priceVals[0];
+  const yMax = priceVals[priceVals.length - 1];
+
+  // 範囲内の購入点のみプロット（範囲外は注釈で表現）
+  const inRangePurchases = purchases.filter(
+    (p) => p.fx >= xMin && p.fx <= xMax && p.price >= yMin && p.price <= yMax
+  );
+
   const purchaseDots = {
     type: "scatter",
     mode: "markers",
-    x: purchases.map((p) => p.fx),
-    y: purchases.map((p) => p.price),
+    x: inRangePurchases.map((p) => p.fx),
+    y: inRangePurchases.map((p) => p.price),
     marker: { color: "black", size: 7, symbol: "circle" },
     name: "購入点",
     hoverinfo: "skip",
@@ -193,10 +206,6 @@ export function renderGraph(graphData, purchases) {
     hoverinfo: "skip",
   };
   const annotations = [];
-  const xMin = fxVals[0];
-  const xMax = fxVals[fxVals.length - 1];
-  const yMin = priceVals[0];
-  const yMax = priceVals[priceVals.length - 1];
 
   if (breakEvenPoints.length >= 2) {
     const midIdx = Math.floor(breakEvenPoints.length / 2);
@@ -347,6 +356,38 @@ export function renderGraph(graphData, purchases) {
     annotations.push(annotation);
   });
 
+  // 範囲外の購入点を注釈で表示（境界にクランプして方向を付与）
+  purchases.forEach((p, idx) => {
+    const inRange =
+      p.fx >= xMin && p.fx <= xMax && p.price >= yMin && p.price <= yMax;
+    if (inRange) return;
+
+    const clampedX = Math.min(Math.max(p.fx, xMin), xMax);
+    const clampedY = Math.min(Math.max(p.price, yMin), yMax);
+    const isRight = clampedX > (xMin + xMax) / 2;
+    const isUpper = clampedY > (yMin + yMax) / 2;
+
+    const dirX = p.fx < xMin ? "左" : p.fx > xMax ? "右" : "";
+    const dirY = p.price < yMin ? "下" : p.price > yMax ? "上" : "";
+    const dir = `${dirX}${dirY}` || "外";
+
+    annotations.push({
+      x: clampedX,
+      y: clampedY,
+      xref: "x",
+      yref: "y",
+      showarrow: true,
+      arrowhead: 4,
+      ax: isRight ? -30 : 30,
+      ay: isUpper ? 30 : -30,
+      bgcolor: "rgba(255, 255, 255, 0.7)",
+      bordercolor: "black",
+      font: { size: 8, color: "black" },
+      align: "left",
+      text: `● 購入情報${idx + 1} は${dir}にあります`,
+    });
+  });
+
   // 平均点の注釈（範囲外のみ）
   if (
     averagePoint &&
@@ -384,6 +425,7 @@ export function renderGraph(graphData, purchases) {
       title: "為替レート（円/USD）",
       titlefont: { size: 12 },
       tickfont: { size: 10 },
+      autorange: false,
       range: [xMin, xMax],
       fixedrange: true,
     },
@@ -391,6 +433,7 @@ export function renderGraph(graphData, purchases) {
       title: "売却株価（USD）",
       titlefont: { size: 12 },
       tickfont: { size: 10 },
+      autorange: false,
       range: [yMin, yMax],
       fixedrange: true,
     },
@@ -410,7 +453,7 @@ export function renderGraph(graphData, purchases) {
       y: 1,
       xanchor: "left",
       yanchor: "top",
-      font: { size: 6 },
+      font: { size: 12 },
       itemsizing: "constant",
       bgcolor: "rgba(255,255,255,0.6)",
       bordercolor: "rgba(204,204,204,0.5)",
@@ -560,14 +603,15 @@ export function renderGraph(graphData, purchases) {
         hoverElement.style.display = "block";
       }
 
-      // 損益計算（キャッシュを活用）
-      const profitYen = calculateProfitAtPoint(
-        graphX,
-        graphY,
-        purchases,
-        totalQty,
-        costDollar
-      );
+      // 損益計算（某証券寄せの円評価ロジックで表示値を算出）
+      const currentValueYen = Math.trunc(graphX * graphY * totalQty);
+      const avgAcqYen = totalQty > 0 ? (totalCostYen || 0) / totalQty : 0;
+      const { profitLossYen: profitYen, profitLossRatePct: rateYen } =
+        computeYenValuationTruncTowardZero(
+          avgAcqYen,
+          totalQty,
+          currentValueYen
+        );
       const profitUsd = graphY * totalQty - costDollar;
 
       // 安全な割り算関数
@@ -588,7 +632,7 @@ export function renderGraph(graphData, purchases) {
       // 損益率計算（NaNを防ぐ）
       const baseYen = avgPrice * avgFx * totalQty;
       const baseUsd = avgPrice * totalQty;
-      const rateYen = baseYen ? ((profitYen / baseYen) * 100).toFixed(2) : "-";
+      // rateYen は computeYenValuationTruncTowardZero の結果（小数2桁切り捨て）を使用
       const rateUsd = baseUsd ? ((profitUsd / baseUsd) * 100).toFixed(2) : "-";
 
       // 4行テキストを生成
@@ -829,6 +873,7 @@ export function renderGraph(graphData, purchases) {
         2
       )}</span></div>
       <div>合計株数: <span class="text-dark">${totalQty}</span> 株</div>
+      <div class="text-muted small mt-2">注）表示される損益・損益率には手数料・税は含まれていません</div>
     </div>
   `;
 }

@@ -5,7 +5,7 @@ import { updateGraph } from "./graphController.js";
 import { getPurchases } from "../model/calc.js";
 import { addPin, getPins } from "../model/pins.js";
 import { renderPinSettings } from "../view/pinSettings.js";
-import { saveState, restoreState, deleteState } from "../model/state.js";
+import { saveState, loadState, deleteState } from "../model/state.js";
 
 import { showToast } from "../view/toast.js";
 import {
@@ -14,6 +14,7 @@ import {
   getFieldTypeFromClass,
 } from "../view/form.js";
 import { getContent } from "../utils/textContent.js";
+import { buildCurrentAppState, applyAppStateToUI } from "./stateController.js";
 
 // スマホ用モーダル機能
 export function setupMobileModals() {
@@ -793,8 +794,14 @@ export function setupMobileModals() {
                 return;
               }
 
-              // saveState関数を使用
-              const success = saveState(saveName);
+              // 現在の状態を構築して保存
+              const state = buildCurrentAppState();
+              if (!state) {
+                showToast("保存するデータが無効です", "error");
+                return;
+              }
+
+              const success = saveState(saveName, state);
               if (success) {
                 // 保存名をクリア
                 modalBody.querySelector("#save-name-modal").value = "";
@@ -802,6 +809,9 @@ export function setupMobileModals() {
                 setTimeout(() => {
                   updateModalSavedStateList();
                 }, 100);
+                showToast("✅ 保存しました！");
+              } else {
+                showToast("保存中にエラーが発生しました", "error");
               }
             } catch (error) {
               console.error("モーダル内保存エラー:", error);
@@ -827,12 +837,17 @@ export function setupMobileModals() {
                 return;
               }
 
-              // restoreState関数を使用
-              const success = restoreState(selectedName);
-              if (success) {
-                // モーダルを閉じる
-                modal.hide();
+              // 状態を読み込み、UIへ適用
+              const state = loadState(selectedName);
+              if (!state) {
+                showToast("選択された設定が見つかりません", "error");
+                return;
               }
+
+              applyAppStateToUI(state, selectedName);
+              showToast("📥 復元しました！");
+              // モーダルを閉じる
+              modal.hide();
             } catch (error) {
               console.error("❌ モーダル内復元エラー:", error);
               showToast("復元中にエラーが発生しました", "error");
