@@ -6,8 +6,8 @@
 // noUiSlider の 'slide' / 'change' はユーザー操作のときだけ発火し、プログラムからの
 // set() では発火しないので、旧実装の isUpdating フラグや setTimeout が不要になる。
 
-import { RANGE_LIMITS } from "../model/purchase.js";
-import { need } from "./dom.js";
+import { RANGE_LIMITS, scalePercent } from "../model/purchase.js";
+import { clear, el, need } from "./dom.js";
 
 /** 末尾の余分な 0 を落とす（"150.0" ではなく "150" と出す） */
 const trim = (value, digits) => String(Number(Number(value).toFixed(digits)));
@@ -64,15 +64,50 @@ function createSlider(
   return node.noUiSlider;
 }
 
+/*
+  トラック上に基準点の位置を刻む。
+
+  グラフの外に出た点には「上にあります」と方向を出しているが、それだけでは
+  どれくらい離れているのかが分からない。ここはミニマップを別に置くより、
+  範囲を直す道具そのもの（スライダー）に位置を乗せたほうが、
+  見る場所と操作する場所が一致して分かりやすい。
+  スケールが非線形でもスライダー自身の座標系で描くので、位置は必ず軸と一致する。
+*/
+function createMarks(node, { range, vertical }) {
+  const layer = el("div", { class: "slider-marks", "aria-hidden": "true" });
+  node.append(layer);
+
+  /** @param {Array<{value:number, kind:string, label:string}>} marks */
+  return (marks) => {
+    clear(layer);
+    for (const mark of marks) {
+      const percent = scalePercent(range, mark.value);
+      if (percent === null) continue;
+      layer.append(
+        el("span", {
+          class: `slider-mark slider-mark-${mark.kind}`,
+          // 位置は % で置く。トラックの実寸が変わっても付いてくる
+          style: vertical ? { bottom: `${percent}%` } : { left: `${percent}%` },
+          title: mark.label,
+        })
+      );
+    }
+  };
+}
+
 /**
  * @param {Object} options
  * @param {(patch: Partial<{fxMin:number,fxMax:number,priceMin:number,priceMax:number}>) => void} options.onChange
  */
 export function createRangeControls({ onChange }) {
+  const fxRange = { min: RANGE_LIMITS.fx.min, max: RANGE_LIMITS.fx.max };
+  const fxNode = need("#fx-slider");
+  const priceNode = need("#price-slider");
+
   const fxSlider = createSlider(
-    need("#fx-slider"),
+    fxNode,
     {
-      range: { min: RANGE_LIMITS.fx.min, max: RANGE_LIMITS.fx.max },
+      range: fxRange,
       step: RANGE_LIMITS.fx.step,
       digits: 1,
       labels: ["為替レートの下限", "為替レートの上限"],
@@ -81,7 +116,7 @@ export function createRangeControls({ onChange }) {
   );
 
   const priceSlider = createSlider(
-    need("#price-slider"),
+    priceNode,
     {
       // 非線形スケール。低価格帯の分解能を確保しつつ $5,000 まで届く
       range: RANGE_LIMITS.price.scale,
@@ -94,6 +129,15 @@ export function createRangeControls({ onChange }) {
     ([min, max]) => onChange({ priceMin: min, priceMax: max })
   );
 
+  const renderFxMarks = createMarks(fxNode, {
+    range: fxRange,
+    vertical: false,
+  });
+  const renderPriceMarks = createMarks(priceNode, {
+    range: RANGE_LIMITS.price.scale,
+    vertical: true,
+  });
+
   const setIfChanged = (slider, [min, max]) => {
     const [currentMin, currentMax] = slider.get().map(Number);
     if (
@@ -105,10 +149,46 @@ export function createRangeControls({ onChange }) {
   };
 
   return {
-    /** @param {{fxMin:number,fxMax:number,priceMin:number,priceMax:number}} view */
-    render(view) {
+    /**
+     * @param {{fxMin:number,fxMax:number,priceMin:number,priceMax:number}} view
+     * @param {{currentPoint?:{fx:number,price:number}|null,
+     *          averagePoint?:{fx:number,price:number}|null,
+     *          pins?:Array<{fx:number,price:number}>}} [landmarks]
+     */
+    render(view, landmarks = {}) {
       setIfChanged(fxSlider, [view.fxMin, view.fxMax]);
       setIfChanged(priceSlider, [view.priceMin, view.priceMax]);
+
+      const { currentPoint, averagePoint, pins = [] } = landmarks;
+      const points = [
+        averagePoint && {
+          point: averagePoint,
+          kind: "average",
+          label: "平均購入点",
+        },
+        currentPoint && {
+          point: currentPoint,
+          kind: "current",
+          label: "現在地",
+        },
+        ...pins.map((pin, index) => ({
+          point: pin,
+          kind: "pin",
+          label: `売却候補ピン ${index + 1}`,
+        })),
+      ].filter(Boolean);
+
+      const marksFor = (axis) =>
+        points
+          .filter(({ point }) => Number.isFinite(point?.[axis]))
+          .map(({ point, kind, label }) => ({
+            value: point[axis],
+            kind,
+            label,
+          }));
+
+      renderFxMarks(marksFor("fx"));
+      renderPriceMarks(marksFor("price"));
     },
   };
 }

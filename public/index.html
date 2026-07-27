@@ -165,7 +165,7 @@
                           aria-describedby="extra-cost-help"
                         />
                         <p id="extra-cost-help" class="form-text mb-0">
-                          売買手数料や為替スプレッドなどを入力すると、取得総額に加算して損益分岐を計算します。
+                          取得総額に加算して計算します。
                         </p>
                       </div>
                     </div>
@@ -183,13 +183,14 @@
                       aria-expanded="true"
                       aria-controls="panel-current"
                     >
+                      <span class="marker-token marker-token-current" aria-hidden="true"></span>
                       現在の株価・為替
                     </button>
                   </h2>
                   <div id="panel-current" class="accordion-collapse collapse show">
                     <div class="accordion-body">
                       <div class="row g-2">
-                        <div class="col-6 field-current">
+                        <div class="col-6">
                           <label class="form-label" for="current-price-input"> 株価（USD） </label>
                           <div class="input-group input-group-sm number-stepper">
                             <button
@@ -222,7 +223,7 @@
                             </button>
                           </div>
                         </div>
-                        <div class="col-6 field-current">
+                        <div class="col-6">
                           <label class="form-label" for="current-fx-input"> 為替（円/USD） </label>
                           <div class="input-group input-group-sm number-stepper">
                             <button
@@ -265,7 +266,6 @@
                       >
                         為替を再取得
                       </button>
-                      <p class="form-text mb-0">グラフ上の「現在地」の輪になります。</p>
                     </div>
                   </div>
                 </div>
@@ -381,12 +381,27 @@
             <!-- グラフ -->
             <div class="card mt-3">
               <div class="card-body">
-                <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                   <h3 class="h6 mb-0 me-auto">為替 × 株価 の損益分岐グラフ</h3>
-                  <p class="text-body-secondary small mb-0">
-                    グラフをクリック、紫の輪をドラッグ、または
-                    <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>（<kbd>Shift</kbd>で粗く）
-                  </p>
+                  <div id="graph-actions" class="d-flex flex-wrap gap-2">
+                    <button
+                      id="btn-fit-view"
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                    >
+                      表示範囲を合わせる
+                    </button>
+                    <button
+                      id="btn-save-image"
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                    >
+                      画像を保存
+                    </button>
+                    <button id="btn-share-x" type="button" class="btn btn-outline-secondary btn-sm">
+                      𝕏 に投稿
+                    </button>
+                  </div>
                 </div>
 
                 <!--
@@ -465,9 +480,18 @@
 
                 <!-- 検討中の条件（プローブ） -->
                 <section id="probe-panel" class="probe-panel" aria-labelledby="probe-heading">
-                  <h4 id="probe-heading" class="probe-heading">検討中の条件</h4>
+                  <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+                    <h4 id="probe-heading" class="probe-heading mb-0">
+                      <span class="marker-token marker-token-probe" aria-hidden="true"></span>
+                      検討中の条件
+                    </h4>
+                    <p class="text-body-secondary small mb-0">
+                      グラフをクリック、紫の輪をドラッグ、または
+                      <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>（<kbd>Shift</kbd>で粗く）
+                    </p>
+                  </div>
                   <div class="row g-2 align-items-end">
-                    <div class="col-6 col-md-3 field-probe">
+                    <div class="col-6 col-md-3">
                       <label class="form-label" for="probe-price-input"> 株価（USD） </label>
                       <div class="input-group input-group-sm number-stepper">
                         <button
@@ -500,7 +524,7 @@
                         </button>
                       </div>
                     </div>
-                    <div class="col-6 col-md-3 field-probe">
+                    <div class="col-6 col-md-3">
                       <label class="form-label" for="probe-fx-input"> 為替（円/USD） </label>
                       <div class="input-group input-group-sm number-stepper">
                         <button
@@ -541,7 +565,11 @@
                       >
                         現在地に戻す
                       </button>
-                      <button id="btn-pin-probe" type="button" class="btn btn-primary btn-sm">
+                      <button
+                        id="btn-pin-probe"
+                        type="button"
+                        class="btn btn-outline-primary btn-sm"
+                      >
                         この条件をピンで留める
                       </button>
                     </div>
@@ -555,18 +583,6 @@
                   すぐ上に見える位置に置く（サイドバーに離すと結果が視界に入らない）
                 -->
               </div>
-            </div>
-
-            <div id="graph-actions" class="d-flex flex-wrap gap-2 mt-3">
-              <button id="btn-fit-view" type="button" class="btn btn-outline-secondary btn-sm">
-                平均購入点と現在地に合わせる
-              </button>
-              <button id="btn-save-image" type="button" class="btn btn-outline-secondary btn-sm">
-                画像を保存
-              </button>
-              <button id="btn-share-x" type="button" class="btn btn-outline-secondary btn-sm">
-                𝕏 に投稿
-              </button>
             </div>
 
             <!-- 感応度 -->

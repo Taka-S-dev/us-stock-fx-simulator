@@ -41,16 +41,14 @@ export function createCurrentPosition({
       syncValue(fxInput, formatInputValue(point.fx, 2));
       syncValue(priceInput, formatInputValue(point.price, 2));
 
-      // 補足は1行に収める。縦に伸びるとグラフが画面外へ押し出される
+      // 補足は1行に収める。常設の説明文が増えるほど画面が読みにくくなる
       const autoLabels = [
         point.fxAuto && "為替",
         point.priceAuto && "株価",
       ].filter(Boolean);
       if (autoLabels.length > 0) {
         autoNote.append(
-          el("span", {
-            text: `${autoLabels.join("・")}は自動設定（上書きできます）`,
-          })
+          el("span", { text: `${autoLabels.join("・")}は自動（上書き可）` })
         );
       }
 
@@ -69,6 +67,14 @@ export function createCurrentPosition({
             }),
           ]),
           // 項目ごとに span に分ける。1つの文にすると途中で折り返して読みにくい
+          // 一番大きい数字が仮の値から出ていることは、数字のそばで断らないと伝わらない
+          point.priceAuto &&
+            el("p", { class: "current-placeholder mb-0" }, [
+              "現在の株価が未入力です。平均取得価額で計算しているので、",
+              el("strong", { text: "為替の影響だけ" }),
+              "を表しています。",
+            ]),
+
           el("p", { class: "current-sub mb-0" }, [
             el("span", { text: `評価額 ${formatYen(valuation.valueYen)} 円` }),
             el("span", {

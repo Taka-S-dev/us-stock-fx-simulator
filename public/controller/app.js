@@ -149,12 +149,19 @@ export function startApp() {
 
   const render = rafThrottle((state) => {
     purchaseList.render(state.purchases);
-    rangeControls.render(state.view);
     savedStates.render(state.savedNames);
     renderFxStatus(state.fxRate);
 
     const graph = selectGraphData(state);
     lastGraph = graph;
+
+    const current = graph ? selectCurrentValuation(state) : null;
+    // 表示範囲の外に出た点が「どちらに、どれくらい」離れているかをトラック上に刻む
+    rangeControls.render(state.view, {
+      currentPoint: current?.point ?? null,
+      averagePoint: graph?.averagePoint ?? null,
+      pins: graph?.pins ?? [],
+    });
 
     pinList.render(graph ? graph.pins : state.pins);
 
@@ -177,7 +184,6 @@ export function startApp() {
       return;
     }
 
-    const current = selectCurrentValuation(state);
     const probe = selectProbeValuation(state);
 
     currentPosition.render(current);
@@ -259,8 +265,8 @@ export function startApp() {
         class: "text-body-secondary",
         text:
           fxRate.fetchedAt != null
-            ? `取得レート ${label} / ${formatTimestamp(fxRate.fetchedAt)}`
-            : `取得レート ${label}`,
+            ? `レート ${label} ${formatTimestamp(fxRate.fetchedAt)}`
+            : `レート ${label}`,
       })
     );
   }

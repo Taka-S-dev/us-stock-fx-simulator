@@ -5,6 +5,7 @@ import {
   isPurchaseValid,
   normalizePurchases,
   RANGE_LIMITS,
+  scalePercent,
   scaleRange,
   validateField,
   validatePin,
@@ -160,5 +161,41 @@ describe("scaleRange", () => {
     const result = scaleRange({ min: 100, max: 250 }, 5, spec);
     expect(result.min).toBeGreaterThanOrEqual(spec.min);
     expect(result.max).toBeLessThanOrEqual(spec.max);
+  });
+});
+
+describe("scalePercent", () => {
+  const linear = { min: 100, max: 250 };
+  const { scale } = RANGE_LIMITS.price;
+
+  it("線形スケールは素直に比例する", () => {
+    expect(scalePercent(linear, 100)).toBe(0);
+    expect(scalePercent(linear, 250)).toBe(100);
+    expect(scalePercent(linear, 175)).toBeCloseTo(50, 8);
+  });
+
+  it("区分線形スケールは各区切りが定義どおりの位置になる", () => {
+    expect(scalePercent(scale, 1)).toBe(0);
+    expect(scalePercent(scale, 50)).toBeCloseTo(25, 8);
+    expect(scalePercent(scale, 200)).toBeCloseTo(50, 8);
+    expect(scalePercent(scale, 1000)).toBeCloseTo(75, 8);
+    expect(scalePercent(scale, 5000)).toBe(100);
+  });
+
+  it("区間の中は、その区間だけで比例する（全体を線形に見ない）", () => {
+    // $125 は $50〜$200 の中央 -> 25% と 50% の中央
+    expect(scalePercent(scale, 125)).toBeCloseTo(37.5, 8);
+    // 全体を線形に見た場合の 2.5% とは大きく違う
+    expect(scalePercent(scale, 125)).not.toBeCloseTo(2.5, 1);
+  });
+
+  it("範囲の外は端に丸める", () => {
+    expect(scalePercent(scale, 0.5)).toBe(0);
+    expect(scalePercent(scale, 9999)).toBe(100);
+  });
+
+  it("数値でなければ null", () => {
+    expect(scalePercent(scale, NaN)).toBeNull();
+    expect(scalePercent(scale, null)).toBeNull();
   });
 });

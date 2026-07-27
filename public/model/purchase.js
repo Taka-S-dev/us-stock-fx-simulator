@@ -66,6 +66,47 @@ export const RANGE_LIMITS = {
   },
 };
 
+/**
+ * スライダーのトラック上で、その値が何％の位置にあたるかを返す。
+ *
+ * 株価のスケールは区分線形（$1→$50→$200→$1,000→$5,000 を等分割）なので、
+ * 値と位置の対応を線形に計算すると大きくずれる。noUiSlider は内部で同じ変換を
+ * 持っているが外へ公開していないため、同じ range 定義からここで求め直す。
+ *
+ * 範囲の外に出た値は 0 / 100 に丸める（「端にある」ことは示せる）。
+ *
+ * @param {Record<string, number|number[]>} range noUiSlider の range 定義
+ * @param {number} value
+ * @returns {number|null} 0〜100。求められないときは null
+ */
+export function scalePercent(range, value) {
+  if (!Number.isFinite(value)) return null;
+
+  const points = Object.entries(range)
+    .map(([key, entry]) => ({
+      // "25%" のような中間キーはそのまま位置になる
+      percent: key === "min" ? 0 : key === "max" ? 100 : Number.parseFloat(key),
+      // 各要素は [値, 刻み] か、値そのもの
+      value: Array.isArray(entry) ? entry[0] : entry,
+    }))
+    .filter((p) => Number.isFinite(p.percent) && Number.isFinite(p.value))
+    .sort((a, b) => a.percent - b.percent);
+
+  if (points.length < 2) return null;
+  if (value <= points[0].value) return 0;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const from = points[i - 1];
+    const to = points[i];
+    if (value > to.value) continue;
+    // 同じ値が続く区間は分母が 0 になるので、手前の位置を返す
+    if (to.value === from.value) return from.percent;
+    const ratio = (value - from.value) / (to.value - from.value);
+    return from.percent + ratio * (to.percent - from.percent);
+  }
+  return 100;
+}
+
 const decimals = (step) => {
   const s = String(step);
   const i = s.indexOf(".");

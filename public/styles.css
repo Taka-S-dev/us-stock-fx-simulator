@@ -16,16 +16,49 @@
   */
   --app-color-current: #212529;
   --app-color-probe: #5f3dc4;
+  --app-color-probe-bg: rgb(95 61 196 / 5%);
 }
 
 :root[data-bs-theme="dark"] {
   --app-color-current: #f8f9fa;
   --app-color-probe: #b197fc;
+  --app-color-probe-bg: rgb(177 151 252 / 8%);
 }
 
+/*
+  ページの背景をカードよりわずかに沈める。
+  Bootstrap の既定ではカード背景 = ページ背景で、枠線のコントラストも 1.7:1 しかなく、
+  「どこからどこまでが一つのまとまりか」が視覚的に読み取れなかった。
+*/
 body {
   min-height: 100vh;
+  background-color: var(--bs-tertiary-bg);
+}
+
+:root[data-bs-theme="dark"] body {
+  /* ダークではカード(#212529)より暗くして、カードを浮かせる */
+  background-color: #16191d;
+}
+
+.card {
   background-color: var(--bs-body-bg);
+  /* 背景差だけでは境界が弱いので、面として少し浮かせる */
+  border-color: var(--bs-border-color);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+
+:root[data-bs-theme="dark"] .card {
+  border-color: #343a40;
+  box-shadow: none;
+}
+
+/* 追従ヘッダーもページ側の色に合わせる（カードに見えてしまうため） */
+.app-header {
+  background-color: var(--bs-tertiary-bg);
+}
+
+:root[data-bs-theme="dark"] .app-header {
+  background-color: #16191d;
 }
 
 .skip-link {
@@ -124,23 +157,32 @@ input[type="number"] {
 }
 
 /*
-  入力欄をグラフ上のマーカーと同じ色で縁取る。
-  「どの入力がグラフのどの点に対応しているのか」を、説明文なしで結びつける
+  グラフ上のマーカーと同じ「形」を見出しにも出す。
+  色だけで対応づけると、その規則を知っている人にしか読めない。
+  塗りつぶしの丸＝検討中の条件、輪＝現在地で、グラフの凡例とも一致する。
 */
-.field-current,
-.field-probe {
-  border-left: 3px solid var(--app-color-current);
-  padding-left: 0.6rem;
+.marker-token {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-right: 0.4em;
+  border-radius: 50%;
+  vertical-align: middle;
 }
 
-.field-probe {
-  border-left-color: var(--app-color-probe);
+.marker-token-probe {
+  background-color: var(--app-color-probe);
 }
 
-.field-current > .form-label,
-.field-probe > .form-label {
-  font-weight: 600;
+.marker-token-current {
+  border: 2px solid var(--app-color-current);
 }
+
+/*
+  入力欄ごとの色付き縦線はやめた。
+  見出しに凡例と同じ印（● / ○）を出した時点で同じことを二度言っており、
+  短い縦線が2本並ぶだけで区切りとしても読めなかった。
+*/
 
 /*
   増減ボタン。ネイティブのスピナーは 10×9px しか無く刻みも 0.01 だったので、
@@ -186,8 +228,12 @@ kbd {
   display: flex;
   align-items: stretch;
   gap: 0.25rem;
-  /* 縦軸カラムの下に出る倍率ボタンのぶん */
-  padding-bottom: 1.9rem;
+  /*
+    縦軸の倍率ボタンは絶対配置だが、その下端は横軸の行より上に収まる。
+    以前は縦軸ボタン用に 1.9rem 予約していたが、実際には誰も使わない空白になっていた。
+    はみ出さないだけの最小限にする。
+  */
+  padding-bottom: 0.35rem;
 }
 
 .graph-main {
@@ -361,6 +407,56 @@ kbd {
   background-color: var(--bs-border-color);
 }
 
+/*
+  トラック上の基準点の刻み。
+  グラフの外に出た点がどれくらい離れているかを、範囲を直す道具の上で示す。
+  ドラッグの邪魔をしないよう当たり判定は持たせない。
+*/
+.slider-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.slider-mark {
+  position: absolute;
+  border-radius: 1px;
+  background-color: var(--app-color-current);
+  /*
+    トラックの地の色と、表示中を示す青の帯の両方の上に乗る。
+    細い線なのでどちらかでコントラストが落ちるため、背景色で縁取って
+    どちらの上でも輪郭が出るようにする
+  */
+  box-shadow: 0 0 0 1px var(--bs-body-bg);
+}
+
+/*
+  トラックを横切らせ、両側へ少しはみ出させる。
+  片側だけに出すと、縦は目盛りラベル、横はグラフの軸ラベルとぶつかる。
+*/
+.noUi-horizontal .slider-mark {
+  top: -3px;
+  height: calc(100% + 6px);
+  width: 2px;
+  transform: translateX(-1px);
+}
+
+.noUi-vertical .slider-mark {
+  left: -3px;
+  width: calc(100% + 6px);
+  height: 2px;
+  transform: translateY(1px);
+}
+
+/* 色の意味はグラフと揃える。事実の点は無彩色、操作する点だけ有彩色 */
+.slider-mark-average {
+  background-color: var(--bs-secondary-color);
+}
+
+.slider-mark-pin {
+  background-color: var(--app-color-probe);
+}
+
 /* -------------------------------------------------- グラフ */
 
 .plot {
@@ -392,9 +488,10 @@ kbd {
 
 /* -------------------------------------------------- 現在地（主役） */
 
-.current-card {
-  border-color: var(--bs-primary-border-subtle);
-}
+/*
+  以前は青い枠を付けていたが、青はマーカーの配色から外したため意味を失っていた。
+  強調は中の数字の大きさが担うので、枠は他のカードと揃える。
+*/
 
 /*
   入力・結論・分岐までの距離を横に並べる。
@@ -435,6 +532,17 @@ kbd {
   font-size: 1.15rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* 主役の数字が仮の値から出ていることの断り。数字の直下に置く */
+.current-placeholder {
+  margin-top: 0.4rem;
+  padding: 0.35rem 0.55rem;
+  border-left: 3px solid var(--bs-warning);
+  border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+  background-color: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
+  font-size: 0.8rem;
 }
 
 .current-sub {
@@ -482,10 +590,17 @@ kbd {
 
 /* -------------------------------------------------- 検討中の条件（プローブ） */
 
+/*
+  グラフ上の吹き出しと同じ「紫の枠の箱」にする。
+  同じ色・同じ枠の容器が2つあることで、離れていても同じものだと読める
+  （点や文字より、容器の形の一致のほうが強い手がかりになる）。
+*/
 .probe-panel {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--bs-border-color);
+  margin-top: 0.85rem;
+  padding: 0.9rem;
+  border: 1px solid var(--app-color-probe);
+  border-radius: var(--bs-border-radius);
+  background-color: var(--app-color-probe-bg);
 }
 
 /* 見出しが無いと、グラフ下のこの一帯が何なのか分からない */

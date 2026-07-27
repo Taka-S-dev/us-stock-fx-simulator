@@ -388,7 +388,7 @@ export function buildFigure(
       ay: probe.price > midPrice ? 46 : -46,
       // 円建てとUSD建ての符号が食い違うことがあるので、両方出す
       text: [
-        `${formatNumber(probe.fx, 2)} 円/USD × $${formatUsd(probe.price)}`,
+        `<b>検討中の条件</b> ${formatNumber(probe.fx, 2)} 円/USD × $${formatUsd(probe.price)}`,
         colored(
           `<b>${formatSignedYen(probe.profitYen)} 円</b>（${formatSignedPct(probe.rateYenPct)}）`,
           toneColor(probe.profitYen, c)
@@ -460,6 +460,43 @@ export function buildFigure(
       ax: 0,
       ay: y > midPrice ? 40 : -40,
       text: `平均購入点は${directionOf(graph.averagePoint, view)}にあります`,
+    });
+  }
+
+  /*
+    現在地と検討中の条件も、範囲の外に出たら行き先を示す。
+    購入点・平均購入点・ピンには出していたのに、この2つだけ黙って消えていた。
+    どちらもグラフの読み方の基準になる点なので、消えたこと自体が伝わる必要がある。
+  */
+  if (currentPoint && !inView(currentPoint, view)) {
+    const { x, y } = clampToView(currentPoint, view);
+    annotations.push({
+      ...box,
+      x,
+      y,
+      showarrow: true,
+      arrowhead: 6,
+      arrowcolor: c.ink,
+      bordercolor: c.border,
+      ax: 0,
+      ay: y > midPrice ? 40 : -40,
+      text: `現在地は${directionOf(currentPoint, view)}にあります`,
+    });
+  }
+
+  if (probe && !inView(probe, view)) {
+    const { x, y } = clampToView(probe, view);
+    annotations.push({
+      ...box,
+      x,
+      y,
+      showarrow: true,
+      arrowhead: 6,
+      arrowcolor: c.accent,
+      bordercolor: c.accent,
+      ax: 0,
+      ay: y > midPrice ? 40 : -40,
+      text: `検討中の条件は${directionOf(probe, view)}にあります`,
     });
   }
 
