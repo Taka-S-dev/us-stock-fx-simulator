@@ -17,48 +17,46 @@
   --app-color-current: #212529;
   --app-color-probe: #5f3dc4;
   --app-color-probe-bg: rgb(95 61 196 / 5%);
+
+  /* カードを浮かせるための地の色。ヘッダーもこれに合わせる */
+  --app-page-bg: #eef0f4;
 }
 
 :root[data-bs-theme="dark"] {
   --app-color-current: #f8f9fa;
   --app-color-probe: #b197fc;
   --app-color-probe-bg: rgb(177 151 252 / 8%);
+  --app-page-bg: #16191d;
 }
 
 /*
-  ページの背景をカードよりわずかに沈める。
+  ページの背景をカードより沈める。
   Bootstrap の既定ではカード背景 = ページ背景で、枠線のコントラストも 1.7:1 しかなく、
   「どこからどこまでが一つのまとまりか」が視覚的に読み取れなかった。
+
+  ライトとダークで沈め方を揃える。既定の tertiary-bg (#f8f9fa) は白との比が 1.05 しかなく、
+  ダーク側だけ明示した値（比 1.14）を入れていたため、同じ設計のはずのカードの浮きが
+  ライトでは半分の強さになっていた。
 */
 body {
   min-height: 100vh;
-  background-color: var(--bs-tertiary-bg);
-}
-
-:root[data-bs-theme="dark"] body {
-  /* ダークではカード(#212529)より暗くして、カードを浮かせる */
-  background-color: #16191d;
+  background-color: var(--app-page-bg);
 }
 
 .card {
   background-color: var(--bs-body-bg);
-  /* 背景差だけでは境界が弱いので、面として少し浮かせる */
-  border-color: var(--bs-border-color);
+  /*
+    背景差だけでは境界が弱いので、面として少し浮かせる。
+    枠線は既定 (#dee2e6) だと沈めた地との比が 1.14 しかなく輪郭にならないため、
+    ダーク側と同じくらい（1.5 前後）読み取れる濃さにする。
+  */
+  border-color: #d3d9e0;
   box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }
 
 :root[data-bs-theme="dark"] .card {
   border-color: #343a40;
   box-shadow: none;
-}
-
-/* 追従ヘッダーもページ側の色に合わせる（カードに見えてしまうため） */
-.app-header {
-  background-color: var(--bs-tertiary-bg);
-}
-
-:root[data-bs-theme="dark"] .app-header {
-  background-color: #16191d;
 }
 
 .skip-link {
@@ -73,11 +71,18 @@ body {
 
 /* -------------------------------------------------- ヘッダー */
 
+/*
+  追従ヘッダーはページ側の色に合わせる（カードに見えてしまうため）。
+
+  以前は .app-header の背景を2箇所で指定しており、あとに書いたこちらの
+  body-bg が勝っていた。ダークだけはテーマ別の上書きが特異度で勝つため沈んでおり、
+  ライトのヘッダーだけが白（＝カードと同色）になっていた。宣言はここ1つにまとめる。
+*/
 .app-header {
   position: sticky;
   top: 0;
   z-index: 1020;
-  background-color: var(--bs-body-bg);
+  background-color: var(--app-page-bg);
 }
 
 .app-title {
@@ -101,6 +106,26 @@ body {
     display: inline;
     margin-left: 0.5rem;
   }
+}
+
+/*
+  アコーディオンの見出し。
+
+  Bootstrap の既定は、開いている項目の地を彩度の高い青（ライトでは #cfe2ff）で塗る。
+  ダークでは #031633 とほとんど沈んだ紺なので目立たないが、ライトでは青い帯が
+  サイドバーに2本並び、グラフより先に目に入っていた（同じ部品なのにテーマで重さが違う）。
+
+  開いているかどうかは、山形の向きと中身が見えていることで分かる。
+  このアプリでは青は表示範囲のスライダーに割り当てているので、ここでは使わない。
+*/
+.accordion {
+  --bs-accordion-active-bg: var(--bs-tertiary-bg);
+  --bs-accordion-active-color: var(--bs-body-color);
+}
+
+/* 山形も既定では青のまま。地に合わせて彩度を落とす */
+.accordion-button:not(.collapsed)::after {
+  filter: grayscale(1);
 }
 
 /* -------------------------------------------------- 購入情報 */
