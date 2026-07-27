@@ -1,0 +1,11 @@
+# 改行は LF に固定する。
+# Windows では core.autocrlf=true が既定のことが多く、チェックアウト時に CRLF へ
+# 変換される。すると Prettier（endOfLine: "lf"）が全ファイルを差分ありと判定し、
+# npm run check がローカルでだけ失敗する（CI は Linux なので気づけない）。
+* text=auto eol=lf
+
+# 生成物・バイナリは変換しない
+package-lock.json -diff
+*.png binary
+*.jpg binary
+*.ico binary
