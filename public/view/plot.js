@@ -136,6 +136,8 @@ const clampToView = (point, view) => ({
  * @param {"light"|"dark"} themeName
  * @param {{
  *   forExport?: boolean,
+ *   compact?: boolean,
+ *     幅の狭い画面向け。凡例・カラーバー・数値ラベルを外してプロット領域に幅を回す
  *   currentPoint?: {fx:number, price:number}|null,
  *   probe?: {fx:number, price:number, profitYen?:number, rateYenPct?:number}|null,
  *     損益を渡すと、グラフ上のプローブに直接ラベルを付ける
@@ -145,7 +147,7 @@ export function buildFigure(
   graph,
   view,
   themeName,
-  { forExport = false, currentPoint = null, probe = null } = {}
+  { forExport = false, compact = false, currentPoint = null, probe = null } = {}
 ) {
   const c = PALETTE[themeName] ?? PALETTE.light;
   const scaleUp = forExport ? 1.3 : 1;
@@ -188,6 +190,12 @@ export function buildFigure(
         （株価で最大 0.8 ドル程度）。値の地形は等高線のラベルで読める。
       */
       hoverinfo: "skip",
+      /*
+        カラーバーは幅を 75px 使う（幅360pxの端末ではグラフ描画域の30%）。
+        値そのものは等高線のラベル（0 / 100k / 200k …）が持っているので、
+        狭い画面では帯をやめて、その幅をプロット領域に回す。
+      */
+      showscale: !compact,
       colorbar: {
         title: { text: "損益（円）", font: { size: size(11) } },
         tickformat: ",.3~s",
@@ -372,7 +380,14 @@ export function buildFigure(
     ドラッグ中は Plotly のホバー（＝ツールチップ）が止まるため、これが無いと
     「いま動かしている点の数字」を見るのにグラフから目を離す必要が出てしまう。
   */
-  if (probe && inView(probe, view) && Number.isFinite(probe.profitYen)) {
+  // 狭い画面では出さない。181px の吹き出しは 101px の描画域から必ずはみ出すうえ、
+  // 同じ数字はすぐ下の「売却条件」パネルに出ている
+  if (
+    !compact &&
+    probe &&
+    inView(probe, view) &&
+    Number.isFinite(probe.profitYen)
+  ) {
     annotations.push({
       ...box,
       x: probe.fx,
@@ -416,17 +431,19 @@ export function buildFigure(
       ax: pin.fx > midFx ? -50 : 50,
       ay: pin.price > midPrice ? 40 : -40,
       text: visible
-        ? [
-            `<b>売却候補</b> ${formatNumber(pin.fx, 2)} 円/USD × $${formatUsd(pin.price)}`,
-            `損益（円）: ${colored(
-              `${formatSignedYen(pin.profitYen)} 円（${formatSignedPct(pin.rateYenPct)}）`,
-              toneColor(pin.profitYen, c)
-            )}`,
-            `損益（USD）: ${colored(
-              `${pin.profitUsd >= 0 ? "+" : "-"}$${formatUsd(Math.abs(pin.profitUsd))}（${formatSignedPct(pin.rateUsdPct)}）`,
-              toneColor(pin.profitUsd, c)
-            )}`,
-          ].join("<br>")
+        ? compact
+          ? `<b>売却候補</b> ${formatNumber(pin.fx, 2)} × $${formatUsd(pin.price)}`
+          : [
+              `<b>売却候補</b> ${formatNumber(pin.fx, 2)} 円/USD × $${formatUsd(pin.price)}`,
+              `損益（円）: ${colored(
+                `${formatSignedYen(pin.profitYen)} 円（${formatSignedPct(pin.rateYenPct)}）`,
+                toneColor(pin.profitYen, c)
+              )}`,
+              `損益（USD）: ${colored(
+                `${pin.profitUsd >= 0 ? "+" : "-"}$${formatUsd(Math.abs(pin.profitUsd))}（${formatSignedPct(pin.rateUsdPct)}）`,
+                toneColor(pin.profitUsd, c)
+              )}`,
+            ].join("<br>")
         : `ピンは${directionOf(pin, view)}にあります`,
     });
   }
@@ -544,9 +561,15 @@ export function buildFigure(
       : "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { color: c.font, family: resolveFontFamily() },
+    /*
+      狭い画面では上の余白（凡例の場所）を詰め、左右も切り詰める。
+      幅360pxでは、この分岐が無いとプロット領域が 101px（画面の28%）しか残らない。
+    */
     margin: forExport
       ? { l: 78, r: 20, t: 90, b: 68 }
-      : { l: 62, r: 12, t: 34, b: 52 },
+      : compact
+        ? { l: 48, r: 8, t: 10, b: 46 }
+        : { l: 62, r: 12, t: 34, b: 52 },
     xaxis: {
       ...axis,
       title: { text: "為替レート（円/USD）", font: { size: size(12) } },
@@ -559,7 +582,13 @@ export function buildFigure(
     },
     hovermode: false,
     dragmode: false,
-    showlegend: true,
+    /*
+      凡例は横並びにしてあるが、幅が足りないと Plotly が折り返して
+      6行・高さ124px になる（プロット領域の高さの半分近い）。
+      狭い画面では出さない。記号の対応は、操作パネル側の見出しに付けた
+      同じ印（● 売却条件 / ○ 現在の株価・為替）で辿れる。
+    */
+    showlegend: !compact,
     legend: {
       orientation: "h",
       yanchor: "bottom",
@@ -580,6 +609,9 @@ export function buildFigure(
  * @param {(point:{fx:number, price:number}) => void} options.onPick
  *   クリック・タップ・ドラッグで座標が選ばれたときに呼ばれる
  */
+/** これより狭い描画域では、凡例・カラーバー・数値ラベルを外す */
+const COMPACT_WIDTH = 420;
+
 export function createPlot({ node, onPick }) {
   let bound = false;
   /** 直近に描いた表示範囲。ピクセル→データ変換に使う */
@@ -642,7 +674,22 @@ export function createPlot({ node, onPick }) {
     async render(graph, view, themeName, options = {}) {
       currentView = view;
       currentProbe = options.probe ?? null;
-      const { traces, layout } = buildFigure(graph, view, themeName, options);
+      /*
+        画面幅ではなく、実際に描く要素の幅で判定する。
+        サイドバーの有無や拡大率でも描画域は変わるので、
+        「この要素が狭いかどうか」だけを見るほうが破綻しない。
+      */
+      const compact = node.clientWidth < COMPACT_WIDTH;
+      /*
+        軸に沿わせた部品の配置も compact かどうかで変える必要がある。
+        判定はプロット要素の幅なので、CSS のメディアクエリ（＝画面幅）では表せない。
+        印だけ付けて、置き方は CSS 側に任せる。
+      */
+      node.closest(".graph-layout")?.classList.toggle("is-compact", compact);
+      const { traces, layout } = buildFigure(graph, view, themeName, {
+        ...options,
+        compact,
+      });
 
       // newPlot ではなく react。イベント購読を保ったまま差分更新される
       await Plotly.react(node, traces, layout, config);

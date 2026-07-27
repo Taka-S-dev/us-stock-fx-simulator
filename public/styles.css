@@ -316,6 +316,22 @@ kbd {
   top: calc(var(--plot-top, 0px) + var(--plot-height, 0px) + 0.4rem);
 }
 
+/*
+  横軸の倍率ボタンは、通常はスライダーの右隣（カラーバーの手前の余白）に置く。
+  ただしカラーバーを外した狭い描画では、プロット領域が右端まで伸びるため
+  その位置が画面の外になる。そのときだけ下の行へ落とす。
+  判定はプロット要素の幅で行うので、印（.is-compact）は view/plot.js が付ける。
+*/
+.graph-layout.is-compact .graph-axis-x {
+  height: 4rem;
+}
+
+.graph-layout.is-compact .graph-axis-x .axis-zoom {
+  top: 2rem;
+  left: auto;
+  right: 0;
+}
+
 @media (max-width: 575.98px) {
   .graph-axis-y {
     width: 2.9rem;
