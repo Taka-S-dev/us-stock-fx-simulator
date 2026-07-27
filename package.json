@@ -25,6 +25,9 @@
   ],
   "author": "Taka-S-dev (https://github.com/Taka-S-dev)",
   "license": "MIT",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Taka-S-dev/us-stock-fx-simulator.git"

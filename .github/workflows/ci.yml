@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+# 実行中の古いジョブは、同じブランチに続けて push されたら止める
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 既定の書き込み権限は与えない（チェックアウトに必要な読み取りだけ）
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -16,7 +25,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 版は .nvmrc の1箇所で決める。手元と CI で npm のメジャーがずれると、
+          # lockfile の記録形式の違いで npm ci だけが失敗する
+          node-version-file: ".nvmrc"
           cache: "npm"
 
       - name: Install dependencies

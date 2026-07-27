@@ -236,6 +236,9 @@ md 以上ではサイドバーを `position: sticky` で追従させ、
 
 ## 開発
 
+Node.js は `.nvmrc` の版（24）を使用します。CI も同じファイルを参照するため、
+手元と CI で npm のメジャーがずれることはありません。
+
 ```bash
 npm install
 
