@@ -262,7 +262,7 @@ export function createActions({ store, repository, preferences, notify }) {
       }));
     },
 
-    /* ---- 検討中の条件（プローブ） -------------------------------------- */
+    /* ---- 売却条件（プローブ） -------------------------------------- */
 
     /**
      * グラフ上の座標へプローブを置く（クリック・タップ・ドラッグ）
@@ -361,7 +361,7 @@ export function createActions({ store, repository, preferences, notify }) {
       );
     },
 
-    /** 検討中の条件をピンとして残す */
+    /** 売却条件をピンとして残す */
     pinProbe() {
       const point = currentProbePoint(store.getState());
       if (!point) return false;

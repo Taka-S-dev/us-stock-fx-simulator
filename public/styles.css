@@ -12,7 +12,7 @@
   /*
     グラフ上のマーカーと入力欄を対応づけるための色。
     view/plot.js の PALETTE と同じ値を使うこと（片方だけ変えると対応が崩れる）。
-    事実を示すもの（現在地）は無彩色、操作するもの（検討中の条件）だけ accent。
+    事実を示すもの（現在地）は無彩色、操作するもの（売却条件）だけ accent。
   */
   --app-color-current: #212529;
   --app-color-probe: #5f3dc4;
@@ -159,7 +159,7 @@ input[type="number"] {
 /*
   グラフ上のマーカーと同じ「形」を見出しにも出す。
   色だけで対応づけると、その規則を知っている人にしか読めない。
-  塗りつぶしの丸＝検討中の条件、輪＝現在地で、グラフの凡例とも一致する。
+  塗りつぶしの丸＝売却条件、輪＝現在地で、グラフの凡例とも一致する。
 */
 .marker-token {
   display: inline-block;
@@ -628,7 +628,7 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-/* -------------------------------------------------- 検討中の条件（プローブ） */
+/* -------------------------------------------------- 売却条件（プローブ） */
 
 /*
   グラフ上の吹き出しと同じ「紫の枠の箱」にする。
@@ -663,22 +663,15 @@ kbd {
   こちらで指定する必要はない（指定しても Plotly 側のルールが優先される）
 */
 
+/*
+  読み取り値は1つ（この条件で売ったときの損益）だけになった。
+  2列のままだと右半分が誰も入らない空列になる。
+
+  囲みも持たせない。このパネル自体が紫の枠で囲まれており、
+  その中でさらに面を塗ると入れ子の箱になる。
+*/
 .probe-readout {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 576px) {
-  .probe-readout {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.probe-figure {
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--bs-border-radius);
-  background-color: var(--bs-tertiary-bg);
+  display: block;
 }
 
 .probe-profit {
@@ -717,14 +710,6 @@ kbd {
   margin-top: 0.2rem;
   font-size: 0.78rem;
   color: var(--bs-secondary-color);
-  font-variant-numeric: tabular-nums;
-}
-
-.probe-breakeven {
-  display: block;
-  margin-top: 0.1rem;
-  font-size: 0.95rem;
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 

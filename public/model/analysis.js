@@ -72,8 +72,8 @@ export function breakEvenDistanceFrom({ fx, price }, agg) {
  * このアプリが存在する理由そのもの。損益を動かす要因は株価と為替の2つしかないので、
  * 符号がずれていれば原因は必ず為替である:
  *
- *   "usdOnly" … 株価では利益だが、円高に食われて円換算では損失
- *   "yenOnly" … 株価では損失だが、円安に助けられて円換算では利益
+ *   "usdOnly" … 株価では利益だが、円高の影響が上回って円換算では損失
+ *   "yenOnly" … 株価では損失だが、円安の影響が上回って円換算では利益
  *
  * グラフ上では「損益分岐ライン（円建て）」と「損益分岐（USD建て）」に挟まれた
  * 領域がこれにあたる。
@@ -86,6 +86,25 @@ export function currencyDivergence({ profitYen, profitUsd }) {
   if (profitYen === 0 || profitUsd === 0) return null;
   if (profitYen > 0 === profitUsd > 0) return null;
   return profitUsd > 0 ? "usdOnly" : "yenOnly";
+}
+
+/**
+ * 符号の食い違いを言葉にする。
+ *
+ * 現在地と売却条件の2箇所で同じことを伝えるので、文はここに1つだけ置く
+ * （別々に書いていた結果、同じ現象が2通りの言い回しになっていた）。
+ *
+ * @param {"usdOnly"|"yenOnly"|null} divergence
+ * @returns {string|null}
+ */
+export function divergenceMessage(divergence) {
+  if (divergence === "usdOnly") {
+    return "株価では利益ですが、円高の影響が上回り、円換算では損失です。";
+  }
+  if (divergence === "yenOnly") {
+    return "株価では損失ですが、円安の影響が上回り、円換算では利益です。";
+  }
+  return null;
 }
 
 /** シナリオ比較表の既定の振れ幅 */

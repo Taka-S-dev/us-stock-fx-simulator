@@ -3,6 +3,7 @@ import { aggregatePurchases, valuationAt } from "../public/model/calc.js";
 import {
   breakEvenDistanceFrom,
   currencyDivergence,
+  divergenceMessage,
   niceContourStep,
   scenarioMatrix,
   sensitivityAt,
@@ -200,5 +201,20 @@ describe("currencyDivergence", () => {
     expect(
       currencyDivergence(valuationAt({ fx: 140, price: 110 }, agg))
     ).toBeNull();
+  });
+});
+
+describe("divergenceMessage", () => {
+  it("符号の食い違いを1つの文で返す（2画面で同じ文になる）", () => {
+    expect(divergenceMessage("usdOnly")).toBe(
+      "株価では利益ですが、円高の影響が上回り、円換算では損失です。"
+    );
+    expect(divergenceMessage("yenOnly")).toBe(
+      "株価では損失ですが、円安の影響が上回り、円換算では利益です。"
+    );
+  });
+
+  it("食い違っていなければ null", () => {
+    expect(divergenceMessage(null)).toBeNull();
   });
 });

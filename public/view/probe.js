@@ -1,15 +1,15 @@
 // view/probe.js
-// 検討中の条件（プローブ）の読み取り値。
+// 売却条件（プローブ）の読み取り値。
 //
 // グラフ上の点は「ホバーで一瞬見える値」ではなく、動かして残せる入力にしてある。
 // 操作の手段は3つ（ドラッグ／矢印キー／数値入力）だが、どれも同じ状態を更新する。
 
+import { divergenceMessage } from "../model/analysis.js";
 import {
   formatNumber,
   formatSignedPct,
   formatSignedUsd,
   formatSignedYen,
-  formatUsd,
   toneClass,
 } from "../utils/format.js";
 import { clear, el, syncValue } from "./dom.js";
@@ -36,11 +36,21 @@ export function createProbePanel({
       clear(container);
       if (!data) return;
 
-      const { point, valuation, breakEven, delta, divergence } = data;
+      const { point, valuation, delta, divergence } = data;
 
       syncValue(fxInput, formatNumber(point.fx, 2).replace(/,/g, ""));
       syncValue(priceInput, formatNumber(point.price, 2).replace(/,/g, ""));
-      // 現在地に一致しているあいだは戻すボタンを無効にする
+      /*
+        「現在地に戻す」は、現在地から動かしたときだけ出す。
+
+        以前は無効化して置いたままにしていたが、初期状態は売却条件＝現在地なので、
+        アプリを開くと必ず押せないボタンが1つ見えている状態だった。
+        無効なボタンは理由を説明しないまま場所だけ取る。
+        戻る先が無いときは操作自体が存在しない、という形にする。
+
+        並びは右詰めなので、現れても「この条件をピンで留める」の位置は動かない。
+      */
+      resetButton.classList.toggle("d-none", point.followsCurrent);
       resetButton.disabled = point.followsCurrent;
 
       const tone = toneClass(valuation.profitYen);
@@ -50,7 +60,7 @@ export function createProbePanel({
           el("div", { class: "probe-figure" }, [
             el("span", {
               class: "summary-stat-label d-block",
-              text: "この条件で売却したときの損益",
+              text: "この条件で売ったときの損益",
             }),
             el("span", { class: `probe-profit ${tone}` }, [
               `${formatSignedYen(valuation.profitYen)} 円`,
@@ -73,20 +83,18 @@ export function createProbePanel({
               }),
           ]),
 
-          breakEven &&
-            el("div", { class: "probe-figure" }, [
-              el("span", {
-                class: "summary-stat-label d-block",
-                text: "ここから ±0 になる水準",
-              }),
-              el("span", { class: "probe-breakeven" }, [
-                `株価 $${formatUsd(breakEven.breakEvenPrice)}（${formatSignedPct(breakEven.pricePct)}）`,
-                el("span", {
-                  class: "d-block",
-                  text: `為替 ${formatNumber(breakEven.breakEvenFx, 2)} 円/USD（${formatSignedPct(breakEven.fxPct)}）`,
-                }),
-              ]),
-            ]),
+          /*
+            「±0 になる水準」はここには置かない。
+
+            - 初期状態では売却条件＝現在地なので、「現在の含み損益」に出ている
+              同じ数字（$150.02 / 163.70）が画面に2組並ぶ
+            - 動かしたあとに出るのは「もしこの条件にいたら、そこから ±0 は
+              どこか」という、持っていない位置についての話になる
+            - そもそも ±0 の位置はグラフ上に損益分岐ラインとして描いてあり、
+              この点はそのグラフの上で動かしている
+
+            ここが答える問いは「この条件で売ったらいくらか」の1つに絞る。
+          */
         ])
       );
 
@@ -96,10 +104,7 @@ export function createProbePanel({
         container.append(
           el("p", {
             class: "probe-divergence mb-0",
-            text:
-              divergence === "usdOnly"
-                ? "株価では利益が出ていますが、円高に食われて円換算では損失です。"
-                : "株価では損失ですが、円安に助けられて円換算では利益です。",
+            text: divergenceMessage(divergence),
           })
         );
       }

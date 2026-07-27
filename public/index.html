@@ -286,10 +286,10 @@
                   </h2>
                   <div id="panel-pin" class="accordion-collapse collapse">
                     <div class="accordion-body">
-                      <p class="form-text mt-0">
-                        グラフ下の「この条件をピンで留める」で追加できます。
-                        留めた条件はグラフ上に損益つきで表示されます。
-                      </p>
+                      <!--
+                        使い方の常設説明は置かない。同じことを空状態の文が言っており、
+                        ピンが1つでもあれば一覧そのものが説明になる。
+                      -->
                       <div id="pin-list"></div>
                     </div>
                   </div>
@@ -447,7 +447,7 @@
                       class="plot"
                       tabindex="0"
                       role="application"
-                      aria-label="損益分岐グラフ。クリックまたは矢印キーで検討する条件を動かせます。値は下の「検討中の条件」に表示されます。"
+                      aria-label="損益分岐グラフ。クリックまたは矢印キーで売却条件を動かせます。値は下の「売却条件」に表示されます。"
                     ></div>
                     <div class="graph-axis-x">
                       <div id="fx-slider"></div>
@@ -478,12 +478,12 @@
                 </div>
                 <div id="plot-empty" class="alert alert-warning mb-0" hidden></div>
 
-                <!-- 検討中の条件（プローブ） -->
+                <!-- 売却条件（プローブ） -->
                 <section id="probe-panel" class="probe-panel" aria-labelledby="probe-heading">
                   <div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
                     <h4 id="probe-heading" class="probe-heading mb-0">
                       <span class="marker-token marker-token-probe" aria-hidden="true"></span>
-                      検討中の条件
+                      売却条件
                     </h4>
                     <p class="text-body-secondary small mb-0">
                       グラフをクリック、紫の輪をドラッグ、または
@@ -499,7 +499,7 @@
                           class="btn btn-outline-secondary"
                           data-step-target="probe-price-input"
                           data-step-dir="-1"
-                          aria-label="検討する株価を1減らす（Shiftで10）"
+                          aria-label="売却時の株価を1減らす（Shiftで10）"
                           title="1減らす（Shiftで10）"
                         >
                           −
@@ -517,7 +517,7 @@
                           class="btn btn-outline-secondary"
                           data-step-target="probe-price-input"
                           data-step-dir="1"
-                          aria-label="検討する株価を1増やす（Shiftで10）"
+                          aria-label="売却時の株価を1増やす（Shiftで10）"
                           title="1増やす（Shiftで10）"
                         >
                           ＋
@@ -532,7 +532,7 @@
                           class="btn btn-outline-secondary"
                           data-step-target="probe-fx-input"
                           data-step-dir="-1"
-                          aria-label="検討する為替を1減らす（Shiftで10）"
+                          aria-label="売却時の為替を1減らす（Shiftで10）"
                           title="1減らす（Shiftで10）"
                         >
                           −
@@ -550,14 +550,18 @@
                           class="btn btn-outline-secondary"
                           data-step-target="probe-fx-input"
                           data-step-dir="1"
-                          aria-label="検討する為替を1増やす（Shiftで10）"
+                          aria-label="売却時の為替を1増やす（Shiftで10）"
                           title="1増やす（Shiftで10）"
                         >
                           ＋
                         </button>
                       </div>
                     </div>
-                    <div class="col-12 col-md-6 d-flex flex-wrap gap-2">
+                    <!--
+                      操作は入力欄と同じ高さ・同じ行に並ぶため、離さないと
+                      「4つ目・5つ目の入力欄」に見える。右端に寄せて間を空ける。
+                    -->
+                    <div class="col-12 col-md-6 d-flex flex-wrap gap-2 justify-content-md-end">
                       <button
                         id="btn-reset-probe"
                         type="button"
@@ -565,10 +569,16 @@
                       >
                         現在地に戻す
                       </button>
+                      <!--
+                        「留めると何が起きるか」はボタン自身が持つ。
+                        サイドバーの畳まれたパネルで説明しても、
+                        読む場所と押す場所が離れていて結びつかない。
+                      -->
                       <button
                         id="btn-pin-probe"
                         type="button"
                         class="btn btn-outline-primary btn-sm"
+                        title="留めた条件は「売却候補ピン」に残り、グラフ上にも損益つきで表示されます"
                       >
                         この条件をピンで留める
                       </button>

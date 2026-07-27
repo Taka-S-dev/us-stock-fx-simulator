@@ -27,7 +27,13 @@ export function createPinList({ container, onToggle, onRemove }) {
         container.append(
           el("p", {
             class: "text-body-secondary small mb-0",
-            text: "ピンはまだありません。気になる売却条件を追加すると、グラフ上に損益が表示されます。",
+            /*
+              状態だけを述べ、手順は書かない。
+              ここは畳まれたパネルの中で、追加するボタンはグラフの下にある。
+              離れた場所で操作方法を説明しても、読むときには対象が見えていない。
+              手順はボタン自身に持たせてある（title 属性）。
+            */
+            text: "ピンはまだありません",
           })
         );
         return;

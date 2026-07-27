@@ -73,7 +73,7 @@ export function createInitialState(overrides = {}) {
      */
     current: { fx: null, price: null },
     /**
-     * 検討中の条件（プローブ）。グラフ上をクリック／ドラッグ／矢印キーで動かす点。
+     * 売却条件（プローブ）。グラフ上をクリック／ドラッグ／矢印キーで動かす点。
      * null のあいだは現在地に追従する。
      * @type {{fx:number|null, price:number|null}}
      */

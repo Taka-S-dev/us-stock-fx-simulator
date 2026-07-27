@@ -22,7 +22,7 @@ import {
       … 無彩色＋縁取り（halo）。区別は色ではなく「形」で行う。
         重なっても読み分けられるよう、主役（現在地・損益分岐ライン）は ink、
         背景となる参照点（購入点・平均購入点）は一段弱い inkSoft
-    操作する点（検討中の条件・ピン）
+    操作する点（売却条件・ピン）
       … accent 1色だけ。画面上で一番目立ってよいのはここ
 
   線の描き分け:
@@ -279,7 +279,7 @@ export function buildFigure(
   }
 
   /*
-    検討中の条件（プローブ）。すべて trace として描く。
+    売却条件（プローブ）。すべて trace として描く。
 
     以前は「掴む輪」を editable な shape にして Plotly にドラッグさせていたが、
     Plotly のシェイプ編集は移動とリサイズを分離できず、輪の縁を掴むと
@@ -325,7 +325,7 @@ export function buildFigure(
       {
         type: "scatter",
         mode: "markers",
-        name: "検討中の条件",
+        name: "売却条件",
         x: [probe.fx],
         y: [probe.price],
         marker: { color: c.accent, size: size(9), symbol: "circle" },
@@ -388,7 +388,7 @@ export function buildFigure(
       ay: probe.price > midPrice ? 46 : -46,
       // 円建てとUSD建ての符号が食い違うことがあるので、両方出す
       text: [
-        `<b>検討中の条件</b> ${formatNumber(probe.fx, 2)} 円/USD × $${formatUsd(probe.price)}`,
+        `<b>売却条件</b> ${formatNumber(probe.fx, 2)} 円/USD × $${formatUsd(probe.price)}`,
         colored(
           `<b>${formatSignedYen(probe.profitYen)} 円</b>（${formatSignedPct(probe.rateYenPct)}）`,
           toneColor(probe.profitYen, c)
@@ -464,7 +464,7 @@ export function buildFigure(
   }
 
   /*
-    現在地と検討中の条件も、範囲の外に出たら行き先を示す。
+    現在地と売却条件も、範囲の外に出たら行き先を示す。
     購入点・平均購入点・ピンには出していたのに、この2つだけ黙って消えていた。
     どちらもグラフの読み方の基準になる点なので、消えたこと自体が伝わる必要がある。
   */
@@ -496,7 +496,7 @@ export function buildFigure(
       bordercolor: c.accent,
       ax: 0,
       ay: y > midPrice ? 40 : -40,
-      text: `検討中の条件は${directionOf(probe, view)}にあります`,
+      text: `売却条件は${directionOf(probe, view)}にあります`,
     });
   }
 

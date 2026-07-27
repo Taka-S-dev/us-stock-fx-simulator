@@ -2,6 +2,7 @@
 // 画面の主役。「今いくらの含み損益か」を最初に見せ、そのすぐ下に
 // 「あと何円動けば±0か」を出す。グラフを読まなくても結論が分かる状態にする。
 
+import { divergenceMessage } from "../model/analysis.js";
 import {
   formatNumber,
   formatSignedPct,
@@ -85,18 +86,17 @@ export function createCurrentPosition({
           取得総額 … 「取得の内訳」に同じものが出ている
           評価額   … 取得総額 ＋ 上の損益。しかも株価が未入力なら仮の値なので、
                      注記から離して単独で置くと誤解のもとになる
-          USD建て  … 初期状態では検討中の条件（＝現在地）のパネルに同じ数字が出る。
+          USD建て  … 初期状態では売却条件（＝現在地）のパネルに同じ数字が出る。
                      円建てと符号が食い違うときだけは意味を持つので、
                      その場合は下の1行（divergence）で言葉にして伝える
       */
 
       if (divergence) {
         container.append(
-          el("p", { class: "probe-divergence mb-0" }, [
-            divergence === "usdOnly"
-              ? "株価では利益ですが、円高に食われて円換算では損失です。"
-              : "株価では損失ですが、円安に助けられて円換算では利益です。",
-          ])
+          el("p", {
+            class: "probe-divergence mb-0",
+            text: divergenceMessage(divergence),
+          })
         );
       }
 
@@ -106,21 +106,29 @@ export function createCurrentPosition({
       // 同じ種類の情報を2つの書式で出すと、見比べるときに読み替えが要る
       breakEvenContainer.append(
         el("div", { class: "breakeven-callout" }, [
-          // 2つの数字は「どちらか片方でも」成り立てば ±0 になる条件。
-          // 見出しがそれを言わないと、2つ揃って必要な条件に読める
+          /*
+            下の2つの数字には「もう一方は動かない」という前提がある。
+            株価が $150.02 で ±0 になるのは為替が今のままのときだけで、
+            両方が動けばどちらの水準も変わる。
+            これを書かないと、2つの数字を別々の目標として読んでしまう。
+
+            前提は行のラベルに入れる。見出しに「もう一方は今のまま」と書く手もあるが、
+            「もう一方」が何を指すのかを読み手に組み立てさせることになる。
+            その行が何の話かをそのまま書けば、読み替えが要らない。
+
+            向き（戻る／下がる）は括弧の中の符号が持っているので言葉にしない。
+          */
           el("span", {
             class: "summary-stat-label d-block",
-            text: breakEven.inProfit
-              ? "株価か為替が ここまで下がると ±0"
-              : "株価か為替が ここまで戻ると ±0",
+            text: "±0 になる水準",
           }),
           el("dl", { class: "breakeven-value stat-rows mb-0" }, [
             statRow(
-              "株価",
+              "株価だけが動くなら",
               `$${formatUsd(breakEven.breakEvenPrice)}（${formatSignedPct(breakEven.pricePct)}）`
             ),
             statRow(
-              "為替",
+              "為替だけが動くなら",
               `${formatNumber(breakEven.breakEvenFx, 2)} 円/USD（${formatSignedPct(breakEven.fxPct)}）`
             ),
           ]),

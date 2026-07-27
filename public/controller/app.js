@@ -311,7 +311,7 @@ export function startApp() {
     input.addEventListener("blur", () => render(store.getState()));
   }
 
-  /* ---- 検討中の条件（プローブ） --------------------------------------- */
+  /* ---- 売却条件（プローブ） --------------------------------------- */
 
   for (const [field, selector] of [
     ["price", "#probe-price-input"],

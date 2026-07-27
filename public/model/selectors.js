@@ -132,8 +132,8 @@ export function selectSummary(state) {
 }
 
 /**
- * 検討中の条件（プローブ）の座標。
- * 未指定のあいだは現在地に追従するので、初期状態では「現在地＝検討点」になる。
+ * 売却条件（プローブ）の座標。
+ * 未指定のあいだは現在地に追従するので、初期状態では「現在地＝売却条件」になる。
  */
 export function selectProbePoint(state) {
   const current = selectCurrentPoint(state);
