@@ -702,7 +702,11 @@
       </div>
     </div>
 
-    <div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+    <!--
+      通知は画面の下から出す。右上はグラフの操作ボタン（画像を保存・𝕏 に投稿）の
+      真上で、押したボタン自身を結果が覆っていた。
+    -->
+    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
     <div
       class="modal fade"

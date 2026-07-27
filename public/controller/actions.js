@@ -246,7 +246,7 @@ export function createActions({ store, repository, preferences, notify }) {
       store.update({
         pins: [...state.pins, { id: nextId("pin"), ...pin, visible: true }],
       });
-      notify("売却候補ピンを追加しました", "success");
+      // 追加されたことはグラフ上の点とピンの一覧で見えている。ここも黙って通す
       return true;
     },
 
@@ -458,7 +458,13 @@ export function createActions({ store, repository, preferences, notify }) {
         const fetchedAt = Date.now();
         preferences.setFxCache(result.value, fetchedAt);
         applyRate(result.value, fetchedAt, "live", applyToPurchases);
-        if (force) notify("為替レートを更新しました", "success");
+        /*
+          成功したことは告げない。
+          押したボタンのすぐ下に「レート 最新 <時刻>」が出ており、値が変われば
+          グラフも動く。見えている結果をもう一度言葉で繰り返すと、
+          通知そのものが読み流す対象になり、本当に伝えたい失敗のときに効かなくなる。
+          取得に失敗したときだけ報せる（下の warning）。
+        */
         return;
       }
 

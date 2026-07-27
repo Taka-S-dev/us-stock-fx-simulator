@@ -4,11 +4,29 @@
 
 import { el, need } from "./dom.js";
 
+/*
+  色は面ではなく記号に置く。
+
+  以前は全面を塗っていたが、この配色ではその緑と赤が損益の色でもある。
+  「保存しました」の緑と「+145,572 円」の緑が同じ強さで出ると、
+  画面の端で緑が光った瞬間に利益の合図に見える。
+  面を塗るのをやめ、アイコンの色と（重い報せだけ）枠線で区別する。
+*/
+/*
+  記号のうしろの U+FE0E（VARIATION SELECTOR-15）は「絵文字ではなく文字として描け」の指定。
+  付けないと ℹ と ⚠ が環境によってカラー絵文字になり、
+  ここで指定した色を無視した青や黄色の四角が並ぶ。
+*/
 const TONE = {
-  success: { class: "text-bg-success", icon: "✓", label: "完了" },
-  info: { class: "text-bg-primary", icon: "ℹ", label: "お知らせ" },
-  warning: { class: "text-bg-warning", icon: "⚠", label: "注意" },
-  error: { class: "text-bg-danger", icon: "✕", label: "エラー" },
+  success: { icon: "✓", iconClass: "text-success", label: "完了" },
+  info: { icon: "ℹ︎", iconClass: "text-body-secondary", label: "お知らせ" },
+  warning: { icon: "⚠︎", iconClass: "text-warning", label: "注意" },
+  error: {
+    icon: "✕",
+    iconClass: "text-danger",
+    label: "エラー",
+    border: "border-danger",
+  },
 };
 
 /**
@@ -23,7 +41,7 @@ export function showToast(message, tone = "info") {
     const toast = el(
       "div",
       {
-        class: `toast align-items-center border-0 ${spec.class}`,
+        class: `toast align-items-center ${spec.border ?? ""}`,
         role: tone === "error" ? "alert" : "status",
         "aria-live": tone === "error" ? "assertive" : "polite",
         "aria-atomic": "true",
@@ -32,7 +50,7 @@ export function showToast(message, tone = "info") {
         el("div", { class: "d-flex" }, [
           el("div", { class: "toast-body" }, [
             el("span", {
-              class: "me-2",
+              class: `me-2 ${spec.iconClass}`,
               "aria-hidden": "true",
               text: spec.icon,
             }),
@@ -41,7 +59,7 @@ export function showToast(message, tone = "info") {
           ]),
           el("button", {
             type: "button",
-            class: "btn-close btn-close-white me-2 m-auto",
+            class: "btn-close me-2 m-auto",
             "data-bs-dismiss": "toast",
             "aria-label": "閉じる",
           }),
