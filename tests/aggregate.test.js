@@ -1,14 +1,7 @@
 // tests/aggregate.test.js
 import { describe, it, expect } from "vitest";
-import fs from "node:fs";
-import path from "node:path";
 
 import { aggregatePurchases } from "../public/model/calc.js";
-
-function truncToDigits(x, digits) {
-  const m = 10 ** digits;
-  return Math.trunc(x * m) / m; // 某証券表示(切り捨て想定)
-}
 
 describe("aggregatePurchases", () => {
   it("aggregates qty / costs / averages (basic)", () => {

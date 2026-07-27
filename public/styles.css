@@ -1,1015 +1,642 @@
-/* -------------------------
-  全体設定 / グローバル
--------------------------- */
+/*
+  Bootstrap 5.3 の CSS 変数（--bs-*）に寄せて書く。
+  data-bs-theme="dark" が付くと変数側が切り替わるので、
+  このファイルでライト用・ダーク用の色を二重に定義する必要がない。
+*/
+
+:root {
+  --app-plot-height: clamp(320px, 58vh, 620px);
+  /* 追従するヘッダーの高さ。sticky の位置合わせに使う */
+  --app-header-height: 52px;
+
+  /*
+    グラフ上のマーカーと入力欄を対応づけるための色。
+    view/plot.js の PALETTE と同じ値を使うこと（片方だけ変えると対応が崩れる）。
+    事実を示すもの（現在地）は無彩色、操作するもの（検討中の条件）だけ accent。
+  */
+  --app-color-current: #212529;
+  --app-color-probe: #5f3dc4;
+}
+
+:root[data-bs-theme="dark"] {
+  --app-color-current: #f8f9fa;
+  --app-color-probe: #b197fc;
+}
+
 body {
-  font-family: "Helvetica Neue", sans-serif;
+  min-height: 100vh;
+  background-color: var(--bs-body-bg);
 }
 
-/* -------------------------
-  購入情報アコーディオン
--------------------------- */
-.accordion-card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #fff;
-  margin-bottom: 16px;
-  overflow: hidden;
-  transition: box-shadow 0.3s ease;
-}
-.accordion-header {
-  padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  background-color: #fff;
-}
-.accordion-title {
-  font-size: 1rem;
-}
-.accordion-icon i {
-  transition: transform 0.3s ease;
-  font-size: 1.2rem;
-}
-.accordion-card.open .accordion-icon i {
-  transform: rotate(180deg);
-}
-.accordion-card .accordion-body {
-  padding: 12px 16px;
-  background-color: #fafafa;
-  border-top: 1px solid #eee;
-  display: none;
-}
-.accordion-card.open .accordion-body {
-  display: block;
-}
-
-/* -------------------------
-  入力フォーム項目
--------------------------- */
-#purchase-container .purchase-entry {
-  padding: 10px;
-  border: 1px solid #ccc;
-  margin-bottom: 8px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-}
-.form-group {
-  margin-bottom: 10px;
-}
-.form-group label {
-  display: block;
-  font-size: 0.9em;
-  margin-bottom: 4px;
-}
-.form-control {
-  width: 100%;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-.btn-add {
-  margin-top: 10px;
-  padding: 6px 12px;
-  background-color: #e0e0e0;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-/* -------------------------
-  汎用パネル表示
--------------------------- */
-.panel-box {
-  background-color: #fdfdff;
-  border: 1px solid #ccd;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-/*×ボタンを削除*/
-#purchase-container .purchase-entry:first-child .btn-close {
-  display: none;
-}
-
-/* -------------------------
-   アコーディオンアイコン
--------------------------- */
-.accordion-icon i {
-  font-size: 1.2rem;
-  display: inline-block;
-  transition: transform 0.3s ease;
-}
-
-.accordion-card.open .accordion-icon i {
-  transform: rotate(180deg);
-}
-
-/* 購入情報のフェードイン */
-.fade-in {
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-
-.fade-in.show {
-  opacity: 1;
-}
-/* === 購入情報の入力 ========== */
-.purchase-entry {
-  background: #fdfdfd;
-  border: 1px solid #dee2e6;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s ease;
-  position: relative;
-}
-
-/* 購入履歴インデックス */
-.purchase-index {
+.skip-link {
   position: absolute;
-  top: 15px;
-  left: 15px;
-  background: #6c757d;
-  color: white;
-  border-radius: 6px;
-  padding: 4px 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: bold;
-  z-index: 1;
-  white-space: nowrap;
-  min-width: 60px;
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.purchase-entry label:first-of-type {
-  padding-top: 35px;
-}
-
-.purchase-entry:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.purchase-entry label {
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.purchase-entry input.form-control {
-  margin-bottom: 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
-}
-
-/* 無効な値の入力フィールドのスタイル */
-.purchase-entry input.form-control.invalid {
-  border-color: #dc3545;
-  background-color: #fff5f5;
-  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
-}
-
-/* エラーメッセージのスタイル */
-.error-message {
-  color: #dc3545;
-  font-size: 0.8rem;
-  margin-top: 2px;
-  margin-bottom: 8px;
-  display: none;
-  font-weight: 500;
-}
-
-.error-message.show {
-  display: block;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-#plot-title {
-  border-bottom: 2px solid #d8dee4;
-  padding-bottom: 6px;
-  margin-bottom: 12px;
-  font-weight: 600;
-  font-size: 1.25rem;
-  color: #212529;
-}
-
-/* カード全体の外枠 */
-.accordion-card {
-  background-color: #fdfdfe;
-  border: 1px solid #d8dee4;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  padding: 16px;
-  margin-bottom: 20px;
-  transition: box-shadow 0.2s ease;
-}
-
-.accordion-card:hover {
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
-}
-
-/* ヘッダー部分（トグル） */
-.accordion-header {
-  cursor: pointer;
-  padding: 10px 12px;
-  border-bottom: 1px solid #d0d7de;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #f3f4f6;
-  border-radius: 6px 6px 0 0;
-}
-
-/* タイトル文字 */
-.accordion-title {
-  font-weight: 600;
-  font-size: 15px;
-  color: #333;
-}
-
-/* 開閉する中身 */
-.accordion-item .accordion-body {
-  background-color: #f7faff;
-  /border-radius: 0 0 6px 6px;
-  padding: 12px 14px;
-}
-/*アコーディオンのスイッチのホバー設定*/
-.accordion-header {
-  cursor: pointer;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.accordion-header:hover {
-  background-color: #f8f9fa;
-  box-shadow: inset 0 0 0 1px #dee2e6;
-}
-
-.toast-container {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
   z-index: 1080;
+  margin: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--bs-border-radius);
+  background-color: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
 }
 
-/* スマホ表示位置の変更 */
-@media (max-width: 768px) {
-  .toast-container {
-    top: auto;
-    bottom: 1rem;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-  }
+/* -------------------------------------------------- ヘッダー */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  background-color: var(--bs-body-bg);
 }
 
-.btn-fixed-width {
-  min-width: 120px;
-}
-
-/* ボタン内のアイコンとテキストの間隔・整列・フォントサイズ調整 */
-.btn,
-.btn-fixed-width {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45em;
-  font-size: 1rem;
+.app-title {
+  font-size: 1.05rem;
+  font-weight: 600;
   line-height: 1.2;
+}
+
+.app-title-sub {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}
+
+@media (min-width: 768px) {
+  .app-title {
+    font-size: 1.25rem;
+  }
+  .app-title-sub {
+    display: inline;
+    margin-left: 0.5rem;
+  }
+}
+
+/* -------------------------------------------------- 購入情報 */
+
+.purchase-entry {
+  padding: 0.75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background-color: var(--bs-tertiary-bg);
+}
+
+.purchase-legend {
+  margin-bottom: 0;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+
+.purchase-remove {
+  --bs-btn-padding-y: 0;
+  --bs-btn-padding-x: 0.4rem;
+  --bs-btn-font-size: 1rem;
+  line-height: 1.4;
+}
+
+.purchase-entry .form-label {
+  margin-bottom: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+/* -------------------------------------------------- 数値入力 */
+
+/*
+  ネイティブのスピナー（上下ボタン）を隠す。
+
+  - 当たり判定が幅 10px × 高さ 9px 程度しかなく、WCAG 2.5.8（24×24px 以上）を満たさない
+  - 刻みが 0.01 の欄では、150 から 151 へ動かすのに100回押す必要があり実用にならない
+  - タッチではほぼ押せない
+
+  値を少しずつ動かす手段は、キーボードの矢印キー（欄にフォーカスして上下）、
+  グラフ上のプローブ、表示範囲のスライダーが担う。
+*/
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+  入力欄をグラフ上のマーカーと同じ色で縁取る。
+  「どの入力がグラフのどの点に対応しているのか」を、説明文なしで結びつける
+*/
+.field-current,
+.field-probe {
+  border-left: 3px solid var(--app-color-current);
+  padding-left: 0.6rem;
+}
+
+.field-probe {
+  border-left-color: var(--app-color-probe);
+}
+
+.field-current > .form-label,
+.field-probe > .form-label {
+  font-weight: 600;
+}
+
+/*
+  増減ボタン。ネイティブのスピナーは 10×9px しか無く刻みも 0.01 だったので、
+  十分な当たり判定（WCAG 2.5.8 の 24×24px 以上）と実用的な刻みで作り直す
+*/
+.number-stepper .btn {
+  --bs-btn-padding-x: 0.5rem;
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.number-stepper input {
   text-align: center;
-  padding-top: 0.45em;
-  padding-bottom: 0.45em;
-  padding-left: 1.1em;
-  padding-right: 1.1em;
-}
-.btn i,
-.btn .bi,
-.btn svg,
-.btn .emoji,
-.btn .icon {
-  font-size: 1.15em;
-  vertical-align: middle;
-  margin-right: 0.25em;
-  margin-left: 0;
-  line-height: 1;
-  display: inline-block;
-}
-.btn .emoji {
-  font-size: 1.15em;
-  vertical-align: middle;
-  margin-right: 0.25em;
-  margin-left: 0;
-  line-height: 1;
-  display: inline-block;
-}
-@media (max-width: 767.98px) {
-  .btn,
-  .btn-fixed-width {
-    font-size: 0.97rem;
-    padding-top: 0.38em;
-    padding-bottom: 0.38em;
-    padding-left: 0.7em;
-    padding-right: 0.7em;
-    gap: 0.32em;
-  }
-  .btn i,
-  .btn .bi,
-  .btn svg,
-  .btn .emoji,
-  .btn .icon {
-    font-size: 1.08em;
-    margin-right: 0.18em;
-  }
 }
 
-/* -------------------------
-  スマホ最適化
--------------------------- */
-@media (max-width: 768px) {
-  /* コンテナの余白調整 */
-  .container {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
+kbd {
+  padding: 0.05rem 0.3rem;
+  font-size: 0.75em;
+  border-radius: 3px;
+}
 
-  /* タイトルサイズ調整 */
-  h1 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-  }
+/* -------------------------------------------------- 表示範囲 */
 
-  /* アコーディオンカードの余白調整 */
-  .accordion-card {
-    margin-bottom: 12px;
-    padding: 12px;
-  }
+/*
+  Bootstrap の reboot は legend を float: left / 大きめのフォントにするので、
+  ラベルとして使う legend では打ち消しておく
+*/
+.purchase-legend {
+  float: none;
+  width: auto;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: inherit;
+}
 
-  /* アコーディオンヘッダーのタッチ領域拡大 */
-  .accordion-header {
-    padding: 12px 16px;
-    min-height: 48px; /* タッチターゲット最小サイズ */
-  }
+/*
+  グラフと軸スライダーの配置。
+  スライダーの長さと位置は、実測したプロット領域（--plot-*）に合わせる。
+  Plotly は軸ラベル分だけ内側に描くため、カード全体に合わせると軸とずれてしまう。
+*/
+.graph-layout {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  /* 縦軸カラムの下に出る倍率ボタンのぶん */
+  padding-bottom: 1.9rem;
+}
 
-  .accordion-title {
-    font-size: 14px;
-  }
+.graph-main {
+  flex: 1;
+  min-width: 0;
+}
 
-  .form-control {
-    padding: 10px 12px;
-    font-size: 16px;
-    min-height: 44px;
-  }
+.graph-axis-y {
+  position: relative;
+  flex: 0 0 auto;
+  /* 目盛り(2rem) + トラック + 余白 */
+  width: 3.4rem;
+}
 
-  .btn {
-    padding: 10px 16px;
-    font-size: 14px;
-    min-height: 44px;
-  }
+.graph-axis-y #price-slider {
+  position: absolute;
+  left: 2.4rem;
+  top: var(--plot-top, 0px);
+  height: var(--plot-height, 100%);
+  margin: 0;
+}
 
-  .purchase-entry {
-    padding: 12px;
-    margin-bottom: 12px;
-  }
+.graph-axis-x {
+  position: relative;
+  height: 2.1rem;
+}
 
-  .purchase-index {
-    padding: 3px 6px;
-    font-size: 10px;
-    top: 8px;
-    left: 8px;
-    min-width: 50px;
-  }
+.graph-axis-x #fx-slider {
+  position: absolute;
+  top: 0.5rem;
+  left: var(--plot-left, 0px);
+  width: var(--plot-width, 100%);
+  margin: 0;
+}
 
-  .purchase-entry {
-    padding-top: 0;
-  }
+/*
+  倍率ボタンは、それぞれのスライダーのすぐ隣に置く。
+  横軸はスライダーの右端、縦軸は列の下端。
+*/
+.axis-zoom {
+  position: absolute;
+}
 
-  .purchase-entry label:first-of-type {
-    padding-top: 25px;
-  }
+/* タッチ目標として 24×24px 以上を確保する（WCAG 2.5.8） */
+.axis-zoom .btn {
+  --bs-btn-padding-y: 0;
+  --bs-btn-padding-x: 0.45rem;
+  --bs-btn-font-size: 0.9rem;
+  min-width: 26px;
+  min-height: 26px;
+  line-height: 1.5;
+}
 
-  .slider-group {
-    padding: 8px !important;
-    margin-bottom: 16px !important;
-  }
+.graph-axis-x .axis-zoom {
+  top: 0.1rem;
+  left: calc(var(--plot-left, 0px) + var(--plot-width, 0px) + 0.5rem);
+}
 
-  .slider-group input {
-    font-size: 14px;
-    padding: 8px;
-  }
+.graph-axis-y .axis-zoom {
+  left: 0;
+  top: calc(var(--plot-top, 0px) + var(--plot-height, 0px) + 0.4rem);
+}
 
-  #plot-title {
-    font-size: 1.1rem;
-    margin-bottom: 8px;
+@media (max-width: 575.98px) {
+  .graph-axis-y {
+    width: 2.9rem;
   }
-
-  #graph-container {
-    width: 100%;
-    max-width: 100%;
-    touch-action: manipulation;
-    -webkit-overflow-scrolling: touch;
-    overflow: visible;
-    position: relative;
+  .graph-axis-y #price-slider {
+    left: 2.1rem;
   }
-
-  #plot {
-    width: 100% !important;
-    height: auto !important;
-    touch-action: manipulation;
-    pointer-events: auto;
+  .noUi-pips-vertical {
+    width: 1.7rem;
+    padding-right: 0.3rem;
   }
-
-  #average-info {
-    padding: 12px !important;
-    font-size: 14px;
-  }
-
-  .btn-fixed-width {
-    min-width: 100px;
-    font-size: 12px;
-    padding: 8px 12px;
-  }
-
-  #pin-settings .d-flex {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  #pin-settings .btn-delete-pin {
-    align-self: flex-end;
-    margin-top: 4px;
-  }
-
-  .d-flex.gap-2 {
-    flex-wrap: wrap;
-    gap: 8px !important;
-  }
-
-  .d-flex.gap-2 .btn {
-    flex: 1;
-    min-width: 80px;
+  .noUi-value-vertical {
+    right: 0.3rem;
   }
 }
 
-@media (max-width: 375px) {
-  .container {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-
-  h1 {
-    font-size: 1.3rem;
-  }
-
-  .accordion-card {
-    padding: 8px;
-  }
-
-  .accordion-header {
-    padding: 10px 12px;
-  }
-
-  .accordion-title {
-    font-size: 13px;
-  }
-
-  .btn {
-    padding: 8px 12px;
-    font-size: 13px;
-  }
-
-  .btn-fixed-width {
-    min-width: 90px;
-    font-size: 11px;
-  }
-
-  .d-md-none .btn {
-    font-size: 12px;
-    padding: 8px 4px;
-    min-height: 40px;
-  }
-
-  .d-md-none .btn .bi {
-    font-size: 14px;
-  }
-
-  .modal-title {
-    font-size: 1rem !important;
-  }
-
-  .modal-body {
-    font-size: 0.85rem !important;
-  }
-
-  .modal-body .form-label {
-    font-size: 0.8rem !important;
-  }
-
-  .modal-body .form-control {
-    font-size: 0.8rem !important;
-    padding: 0.25rem 0.4rem !important;
-    height: auto !important;
-    min-height: 28px !important;
-  }
-
-  .modal-body .form-check-label {
-    font-size: 0.75rem !important;
-  }
-
-  .modal-body .btn {
-    font-size: 0.8rem !important;
-    padding: 0.25rem 0.5rem !important;
-    height: auto !important;
-    min-height: 28px !important;
-  }
+/* noUiSlider を Bootstrap のトークンに合わせる */
+.noUi-target {
+  border: 0;
+  box-shadow: none;
+  background-color: var(--bs-secondary-bg);
 }
 
-/* -------------------------
-  スライダー系スタイル
--------------------------- */
+.noUi-horizontal {
+  height: 6px;
+}
+
+.noUi-vertical {
+  width: 6px;
+}
+
+.noUi-connect {
+  background-color: var(--bs-primary);
+}
 
 .noUi-handle {
-  background: white !important;
-  border: 2px solid #0d6efd !important;
-  border-radius: 50% !important;
-  width: 24px !important;
-  height: 24px !important;
-  top: -6px !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-  transform: translateX(-25%) !important;
-  transition: background 0.3s, transform 0.2s;
+  width: 22px !important;
+  height: 22px !important;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 50%;
+  background-color: var(--bs-body-bg);
+  box-shadow: var(--bs-box-shadow-sm);
+  cursor: grab;
 }
 
-.noUi-handle:hover {
-  background: #e6f0ff !important;
-  transform: scale(1.1) translateX(-25%);
+.noUi-horizontal .noUi-handle {
+  top: -8px !important;
+  right: -11px !important;
 }
 
-@media (max-width: 768px) {
-  .noUi-handle {
-    width: 32px !important;
-    height: 32px !important;
-    top: -8px !important;
-    transform: translateX(-25%) !important;
-  }
-
-  .noUi-handle:hover {
-    transform: scale(1.2) translateX(-25%) !important;
-  }
-
-  /* スライダー全体のタッチ領域拡大 */
-  .noUi-target {
-    height: 20px !important;
-  }
-
-  .noUi-base {
-    height: 20px !important;
-  }
-
-  .noUi-connect {
-    height: 20px !important;
-  }
+/*
+  縦向きのハンドルは noUiSlider 側が bottom で位置決めしている。
+  ここで top を指定すると（top と bottom と height が同時に効く状態になり）
+  top が優先されてしまい、ハンドルが原点の高さ1つ分ずれる。
+  必ず bottom 側を上書きし、top は auto に戻すこと。
+*/
+.noUi-vertical .noUi-handle {
+  right: -8px !important;
+  top: auto !important;
+  bottom: -11px !important;
 }
 
 .noUi-handle::before,
 .noUi-handle::after {
-  display: none !important;
+  display: none;
 }
 
-.noUi-handle:focus {
-  outline: 3px solid #0d6efd;
-  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.25); /* 青いぼかし */
+.noUi-handle:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
 }
 
-h1 {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
+/*
+  縦向きの目盛りはトラックの左へ。
+  既定は幅を持たない（left:100% で右側に流す）作りなので、
+  右寄せで並べるために幅と配置を与え直す
+*/
+.noUi-pips-vertical {
+  left: auto;
+  right: 100%;
+  width: 2rem;
+  height: 100%;
+  padding: 0 0.4rem 0 0;
+  font-size: 0.65rem;
+  color: var(--bs-secondary-color);
 }
 
-h1.site-title {
-  font-size: 1.5rem;
+.noUi-value-vertical {
+  left: auto;
+  right: 0.4rem;
+  transform: translate(0, -50%);
+  padding-left: 0;
+  white-space: nowrap;
+}
+
+.noUi-pips-horizontal {
+  height: auto;
+  padding: 0.6rem 0 0;
+  font-size: 0.7rem;
+  color: var(--bs-secondary-color);
+}
+
+.noUi-value-horizontal {
+  transform: translate(-50%, 0);
+}
+
+.noUi-marker-horizontal.noUi-marker {
+  background-color: var(--bs-border-color);
+}
+
+/* -------------------------------------------------- グラフ */
+
+.plot {
+  width: 100%;
+  height: var(--app-plot-height);
+}
+
+/*
+  フォントは view/plot.js から Plotly の layout.font.family に渡している。
+  CSS 側で上書きすると、Plotly が枠の大きさを計算したフォントと
+  実際に描画されるフォントがずれ、注釈の文字が枠からはみ出す。
+*/
+
+/* -------------------------------------------------- ピン一覧 */
+
+.pin-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.pin-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--bs-border-radius);
+  background-color: var(--bs-tertiary-bg);
+}
+
+/* -------------------------------------------------- 現在地（主役） */
+
+.current-card {
+  border-color: var(--bs-primary-border-subtle);
+}
+
+/*
+  入力・結論・分岐までの距離を横に並べる。
+  縦に積むとこのカードだけで 450px を超え、グラフが初期画面から押し出されてしまう。
+  グラフを動かすと数値が変わる作りなので、両方が同時に見えていないと因果が追えない。
+*/
+.current-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 992px) {
+  .current-grid {
+    grid-template-columns: minmax(230px, 1fr) minmax(220px, auto) minmax(
+        240px,
+        1fr
+      );
+    align-items: start;
+    column-gap: 1.5rem;
+  }
+}
+
+.current-headline-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
+.current-profit {
+  font-size: clamp(1.6rem, 4vw, 2.15rem);
   font-weight: 700;
-  letter-spacing: 0.03em;
-  background: linear-gradient(90deg, #2c3e50 0%, #6c757d 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-fill-color: transparent;
-  text-shadow: 0 1px 3px rgba(44, 62, 80, 0.08);
-  border-bottom: 1.5px solid #6c757d;
-  padding-bottom: 0.2em;
-  margin-bottom: 1.2em;
-  margin-top: 0.5em;
-  text-align: center;
-}
-@media (max-width: 767.98px) {
-  h1.site-title {
-    font-size: 0.92rem;
-    padding-bottom: 0.13em;
-    margin-bottom: 0.6em;
-  }
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 575.98px) {
-  h1 {
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-  }
-}
-
-#mobile-hover-info {
-  animation: slideInRight 0.3s ease-out;
-  transition: all 0.2s ease-in-out;
-}
-
-#mobile-hover-info:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2) !important;
-}
-
-@media (max-width: 767.98px) {
-  #mobile-hover-info {
-    max-width: 220px !important;
-    font-size: 0.75rem !important;
-    padding: 0.5rem !important;
-    top: 15px !important;
-    right: 15px !important;
-  }
-
-  #mobile-hover-info .text-primary {
-    font-size: 0.9rem !important;
-  }
-
-  #mobile-hover-info .small {
-    font-size: 0.7rem !important;
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-#close-hover-info:hover {
-  background-color: #c82333 !important;
-  transform: scale(1.1);
-}
-
-.scroll-controls {
-  position: fixed;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-/* スクロールボタン */
-.scroll-button {
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 123, 255, 0.7);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  opacity: 0.8;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.scroll-button:hover {
-  background: rgba(0, 123, 255, 0.9);
-  transform: scale(1.1);
-  opacity: 1;
-}
-
-.scroll-button:active {
-  transform: scale(0.95);
-}
-
-@media (max-width: 768px) {
-  .scroll-controls {
-    right: 10px;
-    gap: 8px;
-  }
-
-  .scroll-button {
-    width: 35px;
-    height: 35px;
-    font-size: 1rem;
-  }
-}
-
-@media (min-width: 769px) {
-  .scroll-controls {
-    display: none;
-  }
-}
-
-h1.site-title .emoji {
-  background: none !important;
-  -webkit-background-clip: initial !important;
-  -webkit-text-fill-color: initial !important;
-  background-clip: initial !important;
-  text-fill-color: initial !important;
-  color: inherit !important;
-  font-size: 1.1em;
-  vertical-align: -0.08em;
-  margin-right: 0.08em;
-}
-
-/* Primary */
-.btn-primary {
-  background-color: #2c3e50 !important;
-  border-color: #2c3e50 !important;
-  color: #ffffff !important;
-}
-.btn-primary:hover {
-  background-color: #34495e !important;
-  border-color: #34495e !important;
-}
-.btn-outline-primary {
-  color: #2c3e50 !important;
-  border-color: #2c3e50 !important;
-}
-.btn-outline-primary:hover {
-  background-color: #2c3e50 !important;
-  border-color: #2c3e50 !important;
-}
-
-/* Secondary */
-.btn-secondary {
-  background-color: #6c757d !important;
-  border-color: #6c757d !important;
-  color: #ffffff !important;
-}
-.btn-secondary:hover {
-  background-color: #5a6268 !important;
-  border-color: #5a6268 !important;
-}
-.btn-outline-secondary {
-  color: #6c757d !important;
-  border-color: #6c757d !important;
-}
-.btn-outline-secondary:hover {
-  background-color: #6c757d !important;
-  border-color: #6c757d !important;
-}
-
-/* Success */
-.btn-success {
-  background-color: #27ae60 !important;
-  border-color: #27ae60 !important;
-  color: #ffffff !important;
-}
-.btn-success:hover {
-  background-color: #229954 !important;
-  border-color: #229954 !important;
-}
-.btn-outline-success {
-  color: #27ae60 !important;
-  border-color: #27ae60 !important;
-}
-.btn-outline-success:hover {
-  background-color: #27ae60 !important;
-  border-color: #27ae60 !important;
-}
-
-/* Info */
-.btn-info {
-  background-color: #3498db !important;
-  border-color: #3498db !important;
-  color: #ffffff !important;
-}
-.btn-info:hover {
-  background-color: #2980b9 !important;
-  border-color: #2980b9 !important;
-}
-.btn-outline-info {
-  color: #3498db !important;
-  border-color: #3498db !important;
-}
-.btn-outline-info:hover {
-  background-color: #3498db !important;
-  border-color: #3498db !important;
-}
-
-/* Warning */
-.btn-warning {
-  background-color: #e67e22 !important;
-  border-color: #e67e22 !important;
-  color: #ffffff !important;
-}
-.btn-warning:hover {
-  background-color: #d68910 !important;
-  border-color: #d68910 !important;
-}
-.btn-outline-warning {
-  color: #e67e22 !important;
-  border-color: #e67e22 !important;
-}
-.btn-outline-warning:hover {
-  background-color: #e67e22 !important;
-  border-color: #e67e22 !important;
-}
-
-/* Danger  */
-.btn-danger {
-  background-color: #e74c3c !important;
-  border-color: #e74c3c !important;
-  color: #ffffff !important;
-}
-.btn-danger:hover {
-  background-color: #c0392b !important;
-  border-color: #c0392b !important;
-}
-.btn-outline-danger {
-  color: #e74c3c !important;
-  border-color: #e74c3c !important;
-}
-.btn-outline-danger:hover {
-  background-color: #e74c3c !important;
-  border-color: #e74c3c !important;
-}
-
-/* 削除ボタン専用スタイル */
-.btn-delete-pin {
-  background-color: #e74c3c !important;
-  border-color: #e74c3c !important;
-  color: #ffffff !important;
-}
-.btn-delete-pin:hover {
-  background-color: #c0392b !important;
-  border-color: #c0392b !important;
-}
-
-/* アプリ概要・免責事項ボタンの洗練されたoutlineスタイル */
-.btn-outline-info,
-.btn-outline-warning {
-  background-color: #fff !important;
-  border-width: 2px;
-  font-weight: 500;
-  box-shadow: 0 1px 4px rgba(52, 152, 219, 0.04);
-  transition: background 0.18s, color 0.18s, border-color 0.18s;
-}
-.btn-outline-info {
-  color: #3498db !important;
-  border-color: #3498db !important;
-}
-.btn-outline-info:hover,
-.btn-outline-info:focus {
-  background-color: #3498db !important;
-  color: #fff !important;
-  border-color: #2980b9 !important;
-}
-.btn-outline-warning {
-  color: #e67e22 !important;
-  border-color: #e67e22 !important;
-}
-.btn-outline-warning:hover,
-.btn-outline-warning:focus {
-  background-color: #e67e22 !important;
-  color: #fff !important;
-  border-color: #d68910 !important;
-}
-
-/* 上段情報系ボタン群（info-actions） */
-.info-actions {
-  background: #f7fafc;
-  border: 1.5px solid #e3e8ee;
-  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.04);
-  margin-bottom: 2rem !important;
-  padding: 1.1rem 1rem 1rem 1rem;
-  border-radius: 1.1rem;
-}
-.info-actions .btn {
-  min-width: 0;
-  font-size: 0.98rem;
-  padding-top: 0.5em;
-  padding-bottom: 0.5em;
-  font-weight: 500;
-}
-.info-actions .btn i,
-.info-actions .btn .bi,
-.info-actions .btn .emoji {
-  font-size: 1.1em;
-}
-
-/* 下段操作系ボタン群（main-actions） */
-.main-actions {
-  background: #fff;
-  margin-top: 1.5rem;
-  padding: 0.5rem 0 0.2rem 0;
-  border-radius: 0.7rem;
-}
-.main-actions .btn {
-  font-size: 1.05rem;
+.current-rate {
+  font-size: 1.15rem;
   font-weight: 600;
-  min-width: 120px;
-  margin-bottom: 0.5rem;
+  font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 767.98px) {
-  .info-actions {
-    padding: 0.7rem 0.5rem 0.7rem 0.5rem;
-    margin-bottom: 1.2rem !important;
-    border-radius: 0.7rem;
-  }
-  .main-actions {
-    margin-top: 1rem;
-    border-radius: 0.5rem;
-  }
-  .main-actions .btn {
-    font-size: 0.97rem;
-    min-width: 90px;
-    padding-left: 0.7em;
-    padding-right: 0.7em;
-  }
+.current-sub {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+}
 
-  .modal-title {
-    font-size: 1.1rem !important;
-  }
+/* 文の途中で折り返さないよう、項目ごとに行を分ける */
+.current-sub > span {
+  display: block;
+}
 
-  .modal-body {
-    font-size: 0.9rem !important;
-  }
+.breakeven-callout {
+  padding: 0.6rem 0.85rem;
+  border-left: 3px solid var(--bs-primary);
+  border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+  background-color: var(--bs-tertiary-bg);
+}
 
-  .modal-body .form-label {
-    font-size: 0.85rem !important;
-    margin-bottom: 0.3rem !important;
-  }
+.breakeven-value {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 
-  .modal-body .form-control {
-    font-size: 0.85rem !important;
-    padding: 0.3rem 0.5rem !important;
-    height: auto !important;
-    min-height: 32px !important;
-  }
+/* -------------------------------------------------- 感応度・シナリオ */
 
-  .modal-body .form-check-label {
-    font-size: 0.8rem !important;
-  }
+.sensitivity-note {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+}
 
-  .modal-body .btn {
-    font-size: 0.85rem !important;
-    padding: 0.3rem 0.6rem !important;
-    height: auto !important;
-    min-height: 32px !important;
+.scenario-table th,
+.scenario-table td {
+  vertical-align: middle;
+}
+
+.scenario-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------- 検討中の条件（プローブ） */
+
+.probe-panel {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+/* 見出しが無いと、グラフ下のこの一帯が何なのか分からない */
+.probe-heading {
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--app-color-probe);
+}
+
+/* グラフ自体が操作対象なので、フォーカスされていることを明示する */
+.plot:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 3px;
+  border-radius: var(--bs-border-radius);
+}
+
+/*
+  プローブの輪のカーソルは Plotly が hover 時に cursor: move を当てるため、
+  こちらで指定する必要はない（指定しても Plotly 側のルールが優先される）
+*/
+
+.probe-readout {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+  .probe-readout {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-#btn-post-x,
-#btn-save-image,
-#btn-post-x:focus,
-#btn-save-image:focus,
-#btn-post-x:active,
-#btn-save-image:active,
-#btn-post-x:focus-visible,
-#btn-save-image:focus-visible {
-  background-color: inherit !important;
-  box-shadow: none !important;
-  outline: none !important;
-  transform: none !important;
+.probe-figure {
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--bs-border-radius);
+  background-color: var(--bs-tertiary-bg);
 }
 
-#btn-post-x,
-#btn-save-image {
-  -webkit-tap-highlight-color: transparent !important;
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  touch-action: manipulation;
+.probe-profit {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.probe-rate {
+  margin-left: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* 円建てとUSD建てで符号が食い違っている、という注意書き */
+.probe-divergence {
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-left: 3px solid var(--bs-warning);
+  border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+  background-color: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
+  font-size: 0.85rem;
+}
+
+.probe-usd {
+  margin-top: 0.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.probe-delta {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.probe-breakeven {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------- サマリー */
+
+.summary-lead {
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--bs-primary);
+  background-color: var(--bs-tertiary-bg);
+  border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
+}
+
+.summary-stat,
+.cursor-stat {
+  height: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--bs-border-radius);
+  background-color: var(--bs-tertiary-bg);
+}
+
+.summary-stat-label {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}
+
+.summary-stat-value {
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-stat-extra {
+  margin-left: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}
+
+/* -------------------------------------------------- オフキャンバス */
+
+/*
+  offcanvas-md は md 未満のときだけ引き出しになる。
+  md 以上では通常のブロックとして並ぶので、余白と overflow をリセットしておく。
+*/
+@media (min-width: 768px) {
+  .offcanvas-md .offcanvas-body {
+    padding: 0;
+    overflow: visible;
+  }
+
+  /*
+    サイドバーは追従させない。
+    以前は中身が短く余白が目立ったので sticky にしていたが、
+    「現在の株価・為替」を移してからは画面高さを超えることがあり、
+    ページのスクロールバーの内側にもう1本スクロールバーが出て、
+    どこを操作しているのか分からなくなっていた。
+  */
+}
+
+/* -------------------------------------------------- アニメーション */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }

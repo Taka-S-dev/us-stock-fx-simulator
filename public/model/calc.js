@@ -1,273 +1,128 @@
-/**
- * 米国株投資の損益を2次元グラフ用データとして計算
- * @param {Array} purchases - 購入履歴配列
- * @param {number} fxMin - 為替レート最小値
- * @param {number} fxMax - 為替レート最大値
- * @param {number} priceMin - 株価最小値
- * @param {number} priceMax - 株価最大値
- * @param {Array} pins - ピン情報配列
- * @returns {Object} グラフ描画用データ
- */
+// model/calc.js
+// 損益計算のコア。DOM / View / Controller に一切依存しない純粋関数のみを置く。
+//
+// 用語
+//   totalCostYen : 取得総額（円）。株価×為替×株数 ＋ 手数料等の実費
+//   totalCostUsd : 取得総額（USD）
+//   avgAcqYen    : 平均取得価額（円/株）= totalCostYen / totalQty
+//   avgFx/avgPrice : 「平均購入点」としてグラフに打つ座標。数量加重平均で、手数料を含まない
+
+/** グラフのグリッド解像度（片側の分割数） */
+export const GRID_RESOLUTION = 120;
 
 /**
- * 購入履歴の集計（View/Controller非依存）
- * - 証券ソフトなどの約定結果との突合に使えるよう、合計コスト（円/ドル）を返す
- * - 注意: 現時点では手数料・税・為替スプレッド等は未考慮（必要ならpurchaseに明示的に持たせて加算する）
+ * 指定範囲を均等分割した配列を生成
+ * @param {number} start
+ * @param {number} end
+ * @param {number} num 2以上
+ * @returns {number[]}
+ */
+export function linspace(start, end, num) {
+  if (num < 2) return [start];
+  const step = (end - start) / (num - 1);
+  const arr = new Array(num);
+  for (let i = 0; i < num; i++) arr[i] = start + step * i;
+  // 浮動小数の累積誤差で端がずれないよう終端を厳密に合わせる
+  arr[num - 1] = end;
+  return arr;
+}
+
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+/**
+ * 購入履歴の集計
  * @param {Array<{price:number, fx:number, qty:number, feeYen?:number, feeUsd?:number}>} purchases
+ * @param {number} [extraCostYen] 購入履歴に紐づかない実費（円）。取得総額に加算する
  * @returns {{
- *   totalQty:number,
- *   totalCostYen:number,
- *   totalCostUsd:number,
- *   avgFx:number,
- *   avgPrice:number
+ *   totalQty:number, totalCostYen:number, totalCostUsd:number,
+ *   avgFx:number, avgPrice:number, avgAcqYen:number, avgAcqUsd:number
  * }}
  */
-export function aggregatePurchases(purchases) {
-  if (!Array.isArray(purchases) || purchases.length === 0) {
-    return {
-      totalQty: 0,
-      totalCostYen: 0,
-      totalCostUsd: 0,
-      avgFx: 0,
-      avgPrice: 0,
-    };
-  }
+export function aggregatePurchases(purchases, extraCostYen = 0) {
+  const empty = {
+    totalQty: 0,
+    totalCostYen: 0,
+    totalCostUsd: 0,
+    avgFx: 0,
+    avgPrice: 0,
+    avgAcqYen: 0,
+    avgAcqUsd: 0,
+  };
+  if (!Array.isArray(purchases) || purchases.length === 0) return empty;
 
-  const totalQty = purchases.reduce((acc, p) => acc + (Number(p.qty) || 0), 0);
-  if (totalQty === 0) {
-    return {
-      totalQty: 0,
-      totalCostYen: 0,
-      totalCostUsd: 0,
-      avgFx: 0,
-      avgPrice: 0,
-    };
-  }
+  const totalQty = purchases.reduce((acc, p) => acc + num(p.qty), 0);
+  if (totalQty <= 0) return empty;
 
-  const totalCostYen = purchases.reduce((acc, p) => {
-    const price = Number(p.price) || 0;
-    const fx = Number(p.fx) || 0;
-    const qty = Number(p.qty) || 0;
-    const feeYen = Number(p.feeYen) || 0;
-    // 円建ての手数料などを purchase 単位で持たせる場合に加算できる
-    return acc + price * fx * qty + feeYen;
-  }, 0);
+  const totalCostYen =
+    purchases.reduce(
+      (acc, p) => acc + num(p.price) * num(p.fx) * num(p.qty) + num(p.feeYen),
+      0
+    ) + num(extraCostYen);
 
-  const totalCostUsd = purchases.reduce((acc, p) => {
-    const price = Number(p.price) || 0;
-    const qty = Number(p.qty) || 0;
-    const feeUsd = Number(p.feeUsd) || 0;
-    return acc + price * qty + feeUsd;
-  }, 0);
+  const totalCostUsd = purchases.reduce(
+    (acc, p) => acc + num(p.price) * num(p.qty) + num(p.feeUsd),
+    0
+  );
 
   const avgFx =
-    purchases.reduce(
-      (acc, p) => acc + (Number(p.fx) || 0) * (Number(p.qty) || 0),
-      0
-    ) / totalQty;
+    purchases.reduce((acc, p) => acc + num(p.fx) * num(p.qty), 0) / totalQty;
   const avgPrice =
-    purchases.reduce(
-      (acc, p) => acc + (Number(p.price) || 0) * (Number(p.qty) || 0),
-      0
-    ) / totalQty;
+    purchases.reduce((acc, p) => acc + num(p.price) * num(p.qty), 0) / totalQty;
 
-  return { totalQty, totalCostYen, totalCostUsd, avgFx, avgPrice };
+  return {
+    totalQty,
+    totalCostYen,
+    totalCostUsd,
+    avgFx,
+    avgPrice,
+    avgAcqYen: totalCostYen / totalQty,
+    avgAcqUsd: totalCostUsd / totalQty,
+  };
 }
 
-export function calculateGraphData(
-  purchases,
-  fxMin,
-  fxMax,
-  priceMin,
-  priceMax,
-  pins
-) {
-  try {
-    // 入力値の検証
-    const validationResult = validateCalculationInputs(
-      purchases,
-      fxMin,
-      fxMax,
-      priceMin,
-      priceMax,
-      pins
-    );
+/* -------------------------------------------------------------------------- */
+/* 丸め                                                                        */
+/* -------------------------------------------------------------------------- */
 
-    if (!validationResult.isValid) {
-      console.error("計算入力値の検証に失敗:", validationResult.errors);
-      throw new Error(
-        `入力値が無効です: ${validationResult.errors.join(", ")}`
-      );
-    }
-
-    const maxPoints = 200; // グラフの解像度
-
-    // 購入データの集計
-    const agg = aggregatePurchases(purchases);
-    const totalQty = agg.totalQty;
-    const totalCost = agg.totalCostYen;
-    const costDollar = agg.totalCostUsd;
-    const avgFx = agg.avgFx;
-    const avgPrice = agg.avgPrice;
-
-    // 為替・株価の範囲を均等分割
-    const fxVals = linspace(fxMin, fxMax, maxPoints);
-    const priceVals = linspace(priceMin, priceMax, maxPoints);
-
-    // 損益計算用配列
-    const profitYen = [];
-    const profitRateYen = [];
-    const profitRateUsd = [];
-
-    // 2次元グリッドで損益を計算
-    for (let i = 0; i < priceVals.length; i++) {
-      const profitRow = [],
-        rateYenRow = [],
-        rateUsdRow = [];
-      for (let j = 0; j < fxVals.length; j++) {
-        const fx = fxVals[j];
-        const price = priceVals[i];
-        const profitY = fx * price * totalQty - totalCost;
-        const profitU = price * totalQty - costDollar;
-
-        const rateY = ((100 * profitY) / totalCost).toFixed(2);
-        const rateU = ((100 * profitU) / costDollar).toFixed(2);
-
-        profitRow.push(profitY);
-        rateYenRow.push(`${rateY}%`);
-        rateUsdRow.push(`${rateU}%`);
-      }
-      profitYen.push(profitRow);
-      profitRateYen.push(rateYenRow);
-      profitRateUsd.push(rateUsdRow);
-    }
-
-    // 損益分岐点の検出（損益が0になる境界線）
-    const breakEvenPoints = [];
-    for (let i = 0; i < priceVals.length; i++) {
-      for (let j = 1; j < fxVals.length; j++) {
-        const prev = profitYen[i][j - 1];
-        const curr = profitYen[i][j];
-        if ((prev < 0 && curr >= 0) || (prev > 0 && curr <= 0)) {
-          breakEvenPoints.push({ x: fxVals[j], y: priceVals[i] });
-          break;
-        }
-      }
-    }
-
-    // ピン情報に損益計算を追加（円表示は切り捨て仕様に統一）
-    const enrichedPins = pins.map((p) => {
-      const currentValueYen = Math.trunc(p.fx * p.price * totalQty);
-      const avgAcqYen = totalQty ? totalCost / totalQty : 0;
-      const { profitLossYen, profitLossRatePct } =
-        computeYenValuationTruncTowardZero(
-          avgAcqYen,
-          totalQty,
-          currentValueYen
-        );
-
-      const profitU = p.price * totalQty - costDollar;
-      const rateU = `${((100 * profitU) / (costDollar || 1)).toFixed(2)}%`;
-
-      return {
-        ...p,
-        profitYen: profitLossYen,
-        rateYen: `${profitLossRatePct}%`,
-        rateUsd: rateU,
-      };
-    });
-
-    breakEvenPoints.sort((a, b) => a.x - b.x);
-    return {
-      fxVals,
-      priceVals,
-      profitYen,
-      profitRateYen,
-      profitRateUsd,
-      averagePoint: { fx: avgFx, price: avgPrice },
-      breakEvenPoints,
-      enrichedPins,
-      totalQty,
-      totalCostYen: totalCost,
-      costDollar,
-    };
-  } catch (error) {
-    console.error("グラフデータ計算エラー:", error);
-    // エラー時はデフォルト値を返す
-    return {
-      fxVals: [100, 200],
-      priceVals: [1, 1000],
-      profitYen: [
-        [0, 0],
-        [0, 0],
-      ],
-      profitRateYen: [
-        ["0%", "0%"],
-        ["0%", "0%"],
-      ],
-      profitRateUsd: [
-        ["0%", "0%"],
-        ["0%", "0%"],
-      ],
-      averagePoint: { fx: 140, price: 150 },
-      breakEvenPoints: [],
-      enrichedPins: [],
-      totalQty: 0,
-      totalCostYen: 0,
-      costDollar: 0,
-    };
-  }
-}
-
-/**
- * テスト用（かつ実運用でも利用可能）: 小数桁を「0方向」に切り捨て
- * 例) -1.239,2桁 -> -1.23 /  1.239,2桁 -> 1.23
- */
+/** 小数桁を「0方向」に切り捨て 例) -1.239,2桁 -> -1.23 / 1.239,2桁 -> 1.23 */
 export function truncToDigitsTowardZero(x, digits) {
   const m = 10 ** digits;
   return Math.trunc(x * m) / m;
 }
 
-/**
- * 小数桁を四捨五入
- */
+/** 小数桁を四捨五入 */
 export function roundToDigits(x, digits) {
   const m = 10 ** digits;
   return Math.round(x * m) / m;
 }
 
-/**
- * テスト用（かつ実運用でも利用可能）: 円未満切り捨て（0方向）
- */
+/** 円未満切り捨て（0方向） */
 export function truncToIntYen(x) {
   return Math.trunc(x);
 }
 
+/* -------------------------------------------------------------------------- */
+/* 評価損益                                                                    */
+/* -------------------------------------------------------------------------- */
+
 /**
- * テスト用純粋関数（某証券表示ロジック準拠の円評価）
- * - UIやDOMに非依存
- * - 取得総額(円)は「平均取得価額[円] × 数量」を円未満切り捨て
- * - 損益(円) = 時価評価額[円] − 取得総額(円)
- * - 損益率(%) = (損益 ÷ 取得総額) × 100 を小数2桁で0方向切り捨て
+ * 円評価（証券会社の一般的な表示仕様を再現）
+ * - 取得総額(円) = 平均取得価額[円] × 数量 を円未満切り捨て
+ * - 損益(円)     = 時価評価額[円] − 取得総額(円)
+ * - 損益率(%)    = 損益 ÷ 取得総額 × 100 を小数2桁で0方向切り捨て
  *
- * @param {number} avgAcqYen - 平均取得価額（円/株）
- * @param {number} qty - 数量（株）
- * @param {number} currentValueYen - 時価評価額（円）
+ * @param {number} avgAcqYen 平均取得価額（円/株）
+ * @param {number} qty 数量（株）
+ * @param {number} currentValueYen 時価評価額（円）
  * @returns {{ totalAcqYen:number, profitLossYen:number, profitLossRatePct:number }}
- */
-/**
- * 円評価（中立名）: 取得総額は円未満切り捨て、損益率は小数2桁で0方向切り捨て
- * （一般的な表示仕様を再現）
  */
 export function computeYenValuationTruncTowardZero(
   avgAcqYen,
   qty,
   currentValueYen
 ) {
-  const totalAcqYen = truncToIntYen(
-    (Number(avgAcqYen) || 0) * (Number(qty) || 0)
-  );
-  const profitLossYen = (Number(currentValueYen) || 0) - totalAcqYen;
+  const totalAcqYen = truncToIntYen(num(avgAcqYen) * num(qty));
+  const profitLossYen = num(currentValueYen) - totalAcqYen;
   const profitLossRatePct =
     totalAcqYen !== 0
       ? truncToDigitsTowardZero((profitLossYen / totalAcqYen) * 100, 2)
@@ -276,21 +131,16 @@ export function computeYenValuationTruncTowardZero(
 }
 
 /**
- * USD評価の候補集合（丸め順の揺れに対応するため候補集合を返す）
+ * USD評価の候補集合（証券会社ごとの丸め順の揺れを許容するため候補で返す）
  * @param {number} avgAcqUsd
  * @param {number} qty
  * @param {number} currentPriceUsd
- * @returns {{
- *  currentValueUsd:number,
- *  acqCandidates:number[],
- *  pnlCandidates:Set<number>,
- *  rateCandidates:Set<number>
- * }}
+ * @returns {{ currentValueUsd:number, acqCandidates:number[], pnlCandidates:Set<number>, rateCandidates:Set<number> }}
  */
 export function computeUsdValuationCandidates(avgAcqUsd, qty, currentPriceUsd) {
-  const q = Number(qty) || 0;
-  const avg = Number(avgAcqUsd) || 0;
-  const px = Number(currentPriceUsd) || 0;
+  const q = num(qty);
+  const avg = num(avgAcqUsd);
+  const px = num(currentPriceUsd);
 
   const currentValueUsd = roundToDigits(px * q, 2);
   const acqTotalRaw = avg * q;
@@ -301,13 +151,10 @@ export function computeUsdValuationCandidates(avgAcqUsd, qty, currentPriceUsd) {
   ];
 
   const pnlCandidates = new Set();
+  const rateCandidates = new Set();
   for (const acq of acqCandidates) {
     pnlCandidates.add(roundToDigits(currentValueUsd - acq, 2));
     pnlCandidates.add(truncToDigitsTowardZero(currentValueUsd - acq, 2));
-  }
-
-  const rateCandidates = new Set();
-  for (const acq of acqCandidates) {
     if (acq === 0) continue;
     const r = ((currentValueUsd - acq) / acq) * 100;
     rateCandidates.add(roundToDigits(r, 2));
@@ -318,151 +165,173 @@ export function computeUsdValuationCandidates(avgAcqUsd, qty, currentPriceUsd) {
 }
 
 /**
- * 計算入力値の検証
- * @param {Array} purchases - 購入履歴配列
- * @param {number} fxMin - 為替レート最小値
- * @param {number} fxMax - 為替レート最大値
- * @param {number} priceMin - 株価最小値
- * @param {number} priceMax - 株価最大値
- * @param {Array} pins - ピン情報配列
- * @returns {Object} 検証結果
+ * 任意の1点（為替 × 株価）での損益を求める。
+ * グラフのホバー表示・ピン・画像出力すべてがこの関数を使うことで表示値の食い違いを防ぐ。
+ *
+ * @param {{fx:number, price:number}} point
+ * @param {ReturnType<typeof aggregatePurchases>} agg
+ * @returns {{ profitYen:number, rateYenPct:number, profitUsd:number, rateUsdPct:number, valueYen:number, valueUsd:number }}
  */
-function validateCalculationInputs(
-  purchases,
-  fxMin,
-  fxMax,
-  priceMin,
-  priceMax,
-  pins
-) {
-  const errors = [];
-
-  // 購入履歴の検証
-  if (!Array.isArray(purchases) || purchases.length === 0) {
-    errors.push("購入履歴が空です");
-  } else {
-    purchases.forEach((purchase, index) => {
-      if (!purchase || typeof purchase !== "object") {
-        errors.push(`購入履歴${index + 1}: 無効なデータ形式`);
-        return;
-      }
-
-      if (!isValidNumber(purchase.price) || purchase.price <= 0) {
-        errors.push(`購入履歴${index + 1}: 株価が無効 (${purchase.price})`);
-      }
-
-      if (!isValidNumber(purchase.fx) || purchase.fx <= 0) {
-        errors.push(`購入履歴${index + 1}: 為替レートが無効 (${purchase.fx})`);
-      }
-
-      if (!isValidNumber(purchase.qty) || purchase.qty <= 0) {
-        errors.push(`購入履歴${index + 1}: 株数が無効 (${purchase.qty})`);
-      }
-    });
+export function valuationAt({ fx, price }, agg) {
+  const { totalQty, totalCostUsd, avgAcqYen } = agg;
+  if (!(totalQty > 0)) {
+    return {
+      profitYen: 0,
+      rateYenPct: 0,
+      profitUsd: 0,
+      rateUsdPct: 0,
+      valueYen: 0,
+      valueUsd: 0,
+    };
   }
 
-  // 為替レート範囲の検証
-  if (!isValidNumber(fxMin) || fxMin <= 0) {
-    errors.push(`為替レート最小値が無効 (${fxMin})`);
-  }
-  if (!isValidNumber(fxMax) || fxMax <= 0) {
-    errors.push(`為替レート最大値が無効 (${fxMax})`);
-  }
-  if (fxMin >= fxMax) {
-    errors.push(`為替レート範囲が無効 (${fxMin} >= ${fxMax})`);
-  }
+  const valueYen = truncToIntYen(num(fx) * num(price) * totalQty);
+  const { profitLossYen, profitLossRatePct } =
+    computeYenValuationTruncTowardZero(avgAcqYen, totalQty, valueYen);
 
-  // 株価範囲の検証
-  if (!isValidNumber(priceMin) || priceMin <= 0) {
-    errors.push(`株価最小値が無効 (${priceMin})`);
-  }
-  if (!isValidNumber(priceMax) || priceMax <= 0) {
-    errors.push(`株価最大値が無効 (${priceMax})`);
-  }
-  if (priceMin >= priceMax) {
-    errors.push(`株価範囲が無効 (${priceMin} >= ${priceMax})`);
-  }
-
-  // ピン情報の検証
-  if (Array.isArray(pins)) {
-    pins.forEach((pin, index) => {
-      if (!pin || typeof pin !== "object") {
-        errors.push(`ピン${index + 1}: 無効なデータ形式`);
-        return;
-      }
-
-      if (!isValidNumber(pin.fx) || pin.fx <= 0) {
-        errors.push(`ピン${index + 1}: 為替レートが無効 (${pin.fx})`);
-      }
-
-      if (!isValidNumber(pin.price) || pin.price <= 0) {
-        errors.push(`ピン${index + 1}: 株価が無効 (${pin.price})`);
-      }
-    });
-  }
+  const valueUsd = num(price) * totalQty;
+  const profitUsd = valueUsd - totalCostUsd;
+  const rateUsdPct =
+    totalCostUsd !== 0
+      ? truncToDigitsTowardZero((profitUsd / totalCostUsd) * 100, 2)
+      : 0;
 
   return {
-    isValid: errors.length === 0,
-    errors,
+    profitYen: profitLossYen,
+    rateYenPct: profitLossRatePct,
+    profitUsd,
+    rateUsdPct,
+    valueYen,
+    valueUsd,
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* 損益分岐                                                                    */
+/* -------------------------------------------------------------------------- */
+
 /**
- * 数値の妥当性をチェック
- * @param {any} value - チェックする値
- * @returns {boolean} 有効な数値かどうか
+ * 損益分岐ライン（円建て）。
+ *
+ * 損益 = fx × price × totalQty − totalCostYen なので、損益0の条件は
+ *   fx × price = totalCostYen / totalQty = avgAcqYen
+ * という双曲線で閉じた形で解ける。グリッド走査は不要。
+ *
+ * 表示範囲で切り取った区間だけを返すため、範囲外に伸びる無駄な点を持たない。
+ *
+ * @param {ReturnType<typeof aggregatePurchases>} agg
+ * @param {{fxMin:number, fxMax:number, priceMin:number, priceMax:number}} view
+ * @param {number} [resolution] 曲線の分割数
+ * @returns {Array<{fx:number, price:number}>}
  */
-function isValidNumber(value) {
-  return typeof value === "number" && !isNaN(value) && isFinite(value);
+export function breakEvenCurve(agg, view, resolution = GRID_RESOLUTION) {
+  const { totalQty, avgAcqYen } = agg;
+  if (!(totalQty > 0) || !(avgAcqYen > 0)) return [];
+
+  // price = avgAcqYen / fx を表示範囲でクリップ
+  const fxLo = Math.max(view.fxMin, avgAcqYen / view.priceMax);
+  const fxHi = Math.min(view.fxMax, avgAcqYen / view.priceMin);
+  if (!(fxHi > fxLo)) return [];
+
+  return linspace(fxLo, fxHi, resolution).map((fx) => ({
+    fx,
+    price: avgAcqYen / fx,
+  }));
 }
 
 /**
- * 指定範囲を均等分割した配列を生成
- * @param {number} start - 開始値
- * @param {number} end - 終了値
- * @param {number} num - 分割数
- * @returns {Array} 分割された値の配列
+ * USD建ての損益分岐株価（= 平均取得価額 USD/株）。為替に依存しない水平線。
+ * @param {ReturnType<typeof aggregatePurchases>} agg
+ * @returns {number|null}
  */
-function linspace(start, end, num) {
-  const arr = [];
-  const step = (end - start) / (num - 1);
-  for (let i = 0; i < num; i++) arr.push(start + step * i);
-  return arr;
+export function breakEvenPriceUsd(agg) {
+  return agg.totalQty > 0 ? agg.avgAcqUsd : null;
 }
 
-// 購入履歴の状態管理
-let purchases = [];
+/* -------------------------------------------------------------------------- */
+/* グラフ用データ                                                              */
+/* -------------------------------------------------------------------------- */
 
 /**
- * 購入履歴を取得
- * @returns {Array} 購入履歴配列
+ * 損益グリッド。z[priceIndex][fxIndex] の2次元配列（Plotlyのz形式に合わせる）。
+ *
+ * 損益率は z から一次変換で求まるだけなので配列化しない（旧実装は同サイズの
+ * 文字列配列を2枚持っていて、再描画ごとに数万個の文字列を生成していた）。
+ *
+ * @param {ReturnType<typeof aggregatePurchases>} agg
+ * @param {{fxMin:number, fxMax:number, priceMin:number, priceMax:number}} view
+ * @param {number} [resolution]
+ * @returns {{ fxVals:number[], priceVals:number[], profitYen:number[][] }}
  */
-export function getPurchases() {
-  return purchases;
+export function buildProfitGrid(agg, view, resolution = GRID_RESOLUTION) {
+  const fxVals = linspace(view.fxMin, view.fxMax, resolution);
+  const priceVals = linspace(view.priceMin, view.priceMax, resolution);
+  const { totalQty, totalCostYen } = agg;
+
+  const profitYen = priceVals.map((price) => {
+    const row = new Array(fxVals.length);
+    const priceQty = price * totalQty;
+    for (let j = 0; j < fxVals.length; j++) {
+      row[j] = fxVals[j] * priceQty - totalCostYen;
+    }
+    return row;
+  });
+
+  return { fxVals, priceVals, profitYen };
 }
 
 /**
- * 購入履歴を設定
- * @param {Array} newPurchases - 新しい購入履歴配列
+ * グラフ描画に必要な一式を組み立てる。
+ *
+ * @param {Object} params
+ * @param {Array<{price:number, fx:number, qty:number}>} params.purchases
+ * @param {{fxMin:number, fxMax:number, priceMin:number, priceMax:number}} params.view
+ * @param {Array<{fx:number, price:number, visible?:boolean}>} [params.pins]
+ * @param {number} [params.extraCostYen]
+ * @param {number} [params.resolution]
+ * @returns {{
+ *   fxVals:number[], priceVals:number[], profitYen:number[][],
+ *   aggregate:ReturnType<typeof aggregatePurchases>,
+ *   averagePoint:{fx:number, price:number}|null,
+ *   breakEvenPoints:Array<{fx:number, price:number}>,
+ *   breakEvenPriceUsd:number|null,
+ *   pins:Array<{fx:number, price:number, visible:boolean, profitYen:number, rateYenPct:number, profitUsd:number, rateUsdPct:number}>
+ * }}
  */
-export function setPurchases(newPurchases) {
-  purchases.length = 0;
-  purchases.push(...newPurchases);
-}
+export function calculateGraphData({
+  purchases,
+  view,
+  pins = [],
+  extraCostYen = 0,
+  resolution = GRID_RESOLUTION,
+}) {
+  const aggregate = aggregatePurchases(purchases, extraCostYen);
+  const { fxVals, priceVals, profitYen } = buildProfitGrid(
+    aggregate,
+    view,
+    resolution
+  );
 
-/**
- * localStorageから購入履歴を復元
- * @param {string} name - 保存名
- * @returns {Array} 購入履歴配列
- */
-export function getPurchasesFromStorage(name = "default") {
-  const raw = localStorage.getItem("state::" + name);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed.purchases ?? [];
-  } catch (e) {
-    console.error("JSON parse error", e);
-    return [];
-  }
+  return {
+    fxVals,
+    priceVals,
+    profitYen,
+    aggregate,
+    purchases: purchases.map((p) => ({
+      fx: p.fx,
+      price: p.price,
+      qty: p.qty,
+    })),
+    averagePoint:
+      aggregate.totalQty > 0
+        ? { fx: aggregate.avgFx, price: aggregate.avgPrice }
+        : null,
+    breakEvenPoints: breakEvenCurve(aggregate, view, resolution),
+    breakEvenPriceUsd: breakEvenPriceUsd(aggregate),
+    pins: pins.map((pin) => ({
+      ...pin,
+      visible: pin.visible !== false,
+      ...valuationAt(pin, aggregate),
+    })),
+  };
 }

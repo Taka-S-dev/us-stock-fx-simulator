@@ -1,879 +1,743 @@
-// plot.js 責務はグラフ描画のみ。
-import { computeYenValuationTruncTowardZero } from "../controller/modelFacade.js";
+// view/plot.js
+// Plotly の図の組み立てと描画。損益の計算は一切行わず、calc.js が返した値を
+// 座標と文字列に落とすだけ。画面表示と画像出力で同じ buildFigure を使うため、
+// 「保存した画像だけ見た目が違う」という食い違いが起きない。
 
-// 指定座標での損益を計算する関数
-function calculateProfitAtPoint(fx, price, purchases, totalQty, costDollar) {
-  const totalCost = purchases.reduce(
-    (acc, p) => acc + p.price * p.fx * p.qty,
-    0
+import { niceContourStep } from "../model/analysis.js";
+import {
+  formatNumber,
+  formatSignedPct,
+  formatSignedYen,
+  formatUsd,
+  formatYen,
+} from "../utils/format.js";
+
+/*
+  配色の方針。
+
+  色は等高線（データ）が持つ。赤↔青ですでに損益を表しているので、
+  マーカーまで彩度の高い色を並べると、どれが主役か分からなくなる。
+
+    事実を示す点（購入点・平均購入点・現在地・損益分岐ライン）
+      … 無彩色＋縁取り（halo）。区別は色ではなく「形」で行う。
+        重なっても読み分けられるよう、主役（現在地・損益分岐ライン）は ink、
+        背景となる参照点（購入点・平均購入点）は一段弱い inkSoft
+    操作する点（検討中の条件・ピン）
+      … accent 1色だけ。画面上で一番目立ってよいのはここ
+
+  線の描き分け:
+    データの線（損益分岐 円建て／USD建て）… 実線。重要度は太さで表す
+    カーソルの線（プローブの十字線）      … 点線。データと混同させない
+
+  ダークモードでも等高線の中央（損益0）が背景に馴染むようにしている。
+*/
+const PALETTE = {
+  light: {
+    font: "#212529",
+    grid: "rgba(0,0,0,.08)",
+    surface: "rgba(255,255,255,.88)",
+    border: "#adb5bd",
+    breakEven: "#212529",
+    breakEvenUsd: "#adb5bd",
+    contourLine: "rgba(33,37,41,.25)",
+    /* 事実を示す点は無彩色。等高線の赤↔青と competing しない */
+    ink: "#212529",
+    inkSoft: "#868e96",
+    halo: "#ffffff",
+    /* 操作する点だけに色を割り当てる */
+    accent: "#5f3dc4",
+    /* カーソルの補助線。データではないので、点線かつ控えめに */
+    crosshair: "rgba(95,61,196,.45)",
+    // 損益の符号を示す色。注釈の背景（surface）の上で読める明度にしている
+    positive: "#0f7b47",
+    negative: "#c92a2a",
+    // ColorBrewer RdBu: 損失=赤 / 利益=青 / 中央（損益0）=白
+    scale: [
+      [0, "#b2182b"],
+      [0.25, "#ef8a62"],
+      [0.5, "#f7f7f7"],
+      [0.75, "#67a9cf"],
+      [1, "#2166ac"],
+    ],
+  },
+  dark: {
+    font: "#dee2e6",
+    grid: "rgba(255,255,255,.12)",
+    surface: "rgba(33,37,41,.9)",
+    border: "#6c757d",
+    breakEven: "#f8f9fa",
+    breakEvenUsd: "#6c757d",
+    contourLine: "rgba(248,249,250,.25)",
+    ink: "#f8f9fa",
+    inkSoft: "#adb5bd",
+    halo: "#212529",
+    accent: "#b197fc",
+    crosshair: "rgba(177,151,252,.45)",
+    positive: "#51cf66",
+    negative: "#ff8787",
+    scale: [
+      [0, "#b2182b"],
+      [0.25, "#d6604d"],
+      [0.5, "#2b3035"],
+      [0.75, "#4393c3"],
+      [1, "#2166ac"],
+    ],
+  },
+};
+
+/*
+  Plotly に渡すフォント。
+
+  "inherit" を渡してはいけない。Plotly は枠（注釈の背景）の大きさを
+  文字幅の計算結果から決めるが、"inherit" では実際に使われるフォントを
+  解決できず、描画は既定スタック（Open Sans → Verdana）に落ちる。
+  Verdana は想定より約2割広いため、文字だけが枠からはみ出す。
+  ページで実際に使われている値を解決して渡し、計算と描画を一致させる。
+*/
+const resolveFontFamily = () => {
+  if (typeof document === "undefined") return "system-ui, sans-serif";
+  return getComputedStyle(document.body).fontFamily || "system-ui, sans-serif";
+};
+
+/** 損益の符号に応じた色。0 は中立のまま */
+const toneColor = (value, palette) =>
+  value > 0 ? palette.positive : value < 0 ? palette.negative : palette.font;
+
+/** Plotly の注釈内で色を付ける（対応しているのは span/b などの限られたタグのみ） */
+const colored = (text, color) => `<span style="color:${color}">${text}</span>`;
+
+const inView = (point, view) =>
+  point.fx >= view.fxMin &&
+  point.fx <= view.fxMax &&
+  point.price >= view.priceMin &&
+  point.price <= view.priceMax;
+
+const directionOf = (point, view) => {
+  const x = point.fx < view.fxMin ? "左" : point.fx > view.fxMax ? "右" : "";
+  const y =
+    point.price < view.priceMin
+      ? "下"
+      : point.price > view.priceMax
+        ? "上"
+        : "";
+  return `${x}${y}` || "範囲外";
+};
+
+const clampToView = (point, view) => ({
+  x: Math.min(Math.max(point.fx, view.fxMin), view.fxMax),
+  y: Math.min(Math.max(point.price, view.priceMin), view.priceMax),
+});
+
+/**
+ * Plotly に渡す traces と layout を組み立てる。
+ *
+ * @param {ReturnType<typeof import("../model/calc.js").calculateGraphData>} graph
+ * @param {{fxMin:number,fxMax:number,priceMin:number,priceMax:number}} view
+ * @param {"light"|"dark"} themeName
+ * @param {{
+ *   forExport?: boolean,
+ *   currentPoint?: {fx:number, price:number}|null,
+ *   probe?: {fx:number, price:number, profitYen?:number, rateYenPct?:number}|null,
+ *     損益を渡すと、グラフ上のプローブに直接ラベルを付ける
+ * }} [options]
+ */
+export function buildFigure(
+  graph,
+  view,
+  themeName,
+  { forExport = false, currentPoint = null, probe = null } = {}
+) {
+  const c = PALETTE[themeName] ?? PALETTE.light;
+  const scaleUp = forExport ? 1.3 : 1;
+  const size = (n) => Math.round(n * scaleUp);
+
+  const extent = Math.max(
+    ...graph.profitYen.map((row) => Math.max(...row.map(Math.abs))),
+    1000
   );
-  const totalRevenue = price * fx * totalQty;
-  return totalRevenue - totalCost;
-}
 
-export function renderGraph(graphData, purchases) {
-  const {
-    fxVals,
-    priceVals,
-    profitYen,
-    profitRateYen,
-    profitRateUsd,
-    averagePoint,
-    breakEvenPoints,
-    enrichedPins,
-    totalQty,
-    costDollar,
-    totalCostYen,
-  } = graphData;
+  // 等高線の間隔を切りのいい数字にして、色ではなく数値で読み取れるようにする。
+  // 間隔の倍数で範囲を取ることで、損益0が必ず等高線として引かれる
+  const step = niceContourStep(extent);
+  const levels = Math.ceil(extent / step);
 
-  // 不正な購入情報のチェック
-  let invalidDataWarning = null;
-  try {
-    // 直接DOMをチェックして不正なデータを検出
-    const container = document.getElementById("purchase-container");
-    const modalContainer = document.getElementById("purchase-container-modal");
+  const traces = [
+    {
+      type: "contour",
+      name: "損益（円）",
+      x: graph.fxVals,
+      y: graph.priceVals,
+      z: graph.profitYen,
+      zmin: -extent,
+      zmax: extent,
+      colorscale: c.scale,
+      contours: {
+        coloring: "heatmap",
+        showlines: true,
+        showlabels: true,
+        start: -levels * step,
+        end: levels * step,
+        size: step,
+        labelfont: { size: size(10), color: c.font },
+      },
+      line: { width: 1, color: c.contourLine },
+      /*
+        ホバーの吹き出しは出さない。
+        プローブのラベルが同じ内容を常時出しているうえ、Plotly のホバーは
+        等高線の格子点に値を丸めるため、同じ場所を指しても数字が食い違ってしまう
+        （株価で最大 0.8 ドル程度）。値の地形は等高線のラベルで読める。
+      */
+      hoverinfo: "skip",
+      colorbar: {
+        title: { text: "損益（円）", font: { size: size(11) } },
+        tickformat: ",.3~s",
+        tickfont: { size: size(10) },
+        thickness: size(10),
+        len: 0.6,
+        outlinewidth: 0,
+      },
+    },
+    {
+      type: "scatter",
+      mode: "lines",
+      name: "損益分岐ライン",
+      x: graph.breakEvenPoints.map((p) => p.fx),
+      y: graph.breakEvenPoints.map((p) => p.price),
+      line: { color: c.breakEven, width: size(3) },
+      hoverinfo: "skip",
+    },
+  ];
 
-    const mainEntries = container?.querySelectorAll(".purchase-entry") || [];
-    const modalEntries =
-      modalContainer?.querySelectorAll(".purchase-entry") || [];
-    const entries = modalEntries.length > 0 ? modalEntries : mainEntries;
-
-    let hasInvalidData = false;
-
-    entries.forEach((entry, index) => {
-      const priceInput = entry.querySelector(".price");
-      const fxInput = entry.querySelector(".fx");
-      const qtyInput = entry.querySelector(".qty");
-
-      if (priceInput && fxInput && qtyInput) {
-        const priceValue = priceInput.value.trim();
-        const fxValue = fxInput.value.trim();
-        const qtyValue = qtyInput.value.trim();
-
-        // より詳細な検証ロジック
-        let priceInvalid = false;
-        let fxInvalid = false;
-        let qtyInvalid = false;
-
-        // 空文字チェック
-        if (priceValue === "") {
-          priceInvalid = true;
-        } else {
-          const price = parseFloat(priceValue);
-          if (isNaN(price) || price <= 0 || price > 1000000) {
-            priceInvalid = true;
-          }
-        }
-
-        if (fxValue === "") {
-          fxInvalid = true;
-        } else {
-          const fx = parseFloat(fxValue);
-          if (isNaN(fx) || fx <= 0 || fx < 1 || fx > 1000) {
-            fxInvalid = true;
-          }
-        }
-
-        if (qtyValue === "") {
-          qtyInvalid = true;
-        } else {
-          const qty = parseFloat(qtyValue);
-          if (
-            isNaN(qty) ||
-            qty <= 0 ||
-            !Number.isInteger(qty) ||
-            qty > 1000000
-          ) {
-            qtyInvalid = true;
-          }
-        }
-
-        // クラス名によるチェックも追加
-        if (priceInput.classList.contains("invalid")) priceInvalid = true;
-        if (fxInput.classList.contains("invalid")) fxInvalid = true;
-        if (qtyInput.classList.contains("invalid")) qtyInvalid = true;
-
-        // 空文字または無効な値のチェック
-        if (priceInvalid || fxInvalid || qtyInvalid) {
-          hasInvalidData = true;
-        }
-      }
+  // USD建ての損益分岐（為替に依存しないので水平線になる）
+  if (
+    graph.breakEvenPriceUsd &&
+    graph.breakEvenPriceUsd >= view.priceMin &&
+    graph.breakEvenPriceUsd <= view.priceMax
+  ) {
+    traces.push({
+      type: "scatter",
+      mode: "lines",
+      name: "損益分岐（USD建て）",
+      x: [view.fxMin, view.fxMax],
+      y: [graph.breakEvenPriceUsd, graph.breakEvenPriceUsd],
+      // 破線はカーソル（プローブの十字線）専用にして、データの線は実線に統一する
+      line: { color: c.breakEvenUsd, width: size(2) },
+      hoverinfo: "skip",
     });
-
-    if (hasInvalidData) {
-      // テキストマーカーは作成せず、アノテーションのみ使用
-      invalidDataWarning = true;
-    }
-  } catch (error) {
-    console.error("不正な購入情報チェックエラー:", error);
   }
 
-  // 現在のグラフデータを外部から取得できるように保存
-  window.currentGraphData = {
-    ...graphData,
-    purchases,
-    totalQty,
-    costDollar,
-  };
-
-  const flat = profitYen.flat();
-  const minZ = Math.min(...flat);
-  const maxZ = Math.max(...flat);
-  const margin = Math.max(Math.abs(minZ), Math.abs(maxZ), 1000);
-
-  const contour = {
-    type: "contour",
-    x: fxVals,
-    y: priceVals,
-    z: profitYen,
-    zmin: -margin,
-    zmax: margin,
-    colorscale: ["RdBu"],
-    contours: {
-      coloring: "heatmap",
-      showlines: true,
-      showlabels: true,
-      labelfont: {
-        size: 6,
-        color: "black",
+  const purchasesInView = graph.purchases.filter((p) => inView(p, view));
+  if (purchasesInView.length > 0) {
+    traces.push({
+      type: "scatter",
+      mode: "markers",
+      name: "購入点",
+      x: purchasesInView.map((p) => p.fx),
+      y: purchasesInView.map((p) => p.price),
+      marker: {
+        color: c.inkSoft,
+        size: size(7),
+        symbol: "circle",
+        line: { color: c.halo, width: 1.5 },
       },
-    },
-    line: {
-      width: 0.3,
-      smoothing: 0,
-    },
-    opacity: 0.9,
-    hoverinfo: "skip",
-    colorbar: {
-      title: "損益（円）",
-      titlefont: { size: 6 },
-      tickfont: { size: 5 },
-      tickformat: ",",
-      len: 0.25,
-      thickness: 6,
-      x: 0.98,
-      xanchor: "right",
-    },
-  };
+      hoverinfo: "skip",
+    });
+  }
 
-  // 表示範囲（スライダー由来）
-  const xMin = fxVals[0];
-  const xMax = fxVals[fxVals.length - 1];
-  const yMin = priceVals[0];
-  const yMax = priceVals[priceVals.length - 1];
+  if (graph.averagePoint && inView(graph.averagePoint, view)) {
+    traces.push({
+      type: "scatter",
+      mode: "markers",
+      name: "平均購入点",
+      x: [graph.averagePoint.fx],
+      y: [graph.averagePoint.price],
+      marker: {
+        color: c.inkSoft,
+        size: size(15),
+        symbol: "star",
+        line: { color: c.halo, width: 1.5 },
+      },
+      hoverinfo: "skip",
+    });
+  }
 
-  // 範囲内の購入点のみプロット（範囲外は注釈で表現）
-  const inRangePurchases = purchases.filter(
-    (p) => p.fx >= xMin && p.fx <= xMax && p.price >= yMin && p.price <= yMax
-  );
+  if (currentPoint && inView(currentPoint, view)) {
+    traces.push({
+      type: "scatter",
+      mode: "markers",
+      name: "現在地",
+      x: [currentPoint.fx],
+      y: [currentPoint.price],
+      marker: {
+        color: "rgba(0,0,0,0)",
+        size: size(17),
+        symbol: "circle",
+        line: { color: c.ink, width: 2.5 },
+      },
+      hoverinfo: "skip",
+    });
+  }
 
-  const purchaseDots = {
-    type: "scatter",
-    mode: "markers",
-    x: inRangePurchases.map((p) => p.fx),
-    y: inRangePurchases.map((p) => p.price),
-    marker: { color: "black", size: 7, symbol: "circle" },
-    name: "購入点",
-    hoverinfo: "skip",
-  };
+  /*
+    検討中の条件（プローブ）。すべて trace として描く。
 
-  const averageDot = averagePoint
-    ? {
+    以前は「掴む輪」を editable な shape にして Plotly にドラッグさせていたが、
+    Plotly のシェイプ編集は移動とリサイズを分離できず、輪の縁を掴むと
+    リサイズ扱いになって円が楕円に潰れてしまう（28px の輪はほぼ全体が縁）。
+    ドラッグは自前で処理しているので、shape を持つ必要がない。
+  */
+  if (probe && inView(probe, view)) {
+    traces.push(
+      {
         type: "scatter",
-        mode: "markers+text",
-        x: [averagePoint.fx],
-        y: [averagePoint.price],
-        marker: { color: "red", size: 12, symbol: "star" },
-        text: ["平均購入点"],
-        textposition: "bottom center",
-        textfont: { size: 9, color: "gray" },
-        name: "平均購入点",
+        mode: "lines",
+        x: [probe.fx, probe.fx],
+        y: [view.priceMin, view.priceMax],
+        line: { color: c.crosshair, width: 1, dash: "dot" },
         hoverinfo: "skip",
-      }
-    : null;
-
-  const breakEvenLine = {
-    type: "scatter",
-    mode: "lines",
-    x: breakEvenPoints.map((p) => p.x),
-    y: breakEvenPoints.map((p) => p.y),
-    line: {
-      color: "rgba(128, 0, 0, 0.6)",
-      width: 2.0,
-      dash: "dot",
-    },
-    name: "損益分岐ライン",
-    hoverinfo: "skip",
-  };
-  const annotations = [];
-
-  if (breakEvenPoints.length >= 2) {
-    const midIdx = Math.floor(breakEvenPoints.length / 2);
-    const midPoint = breakEvenPoints[midIdx];
-
-    annotations.push(
-      {
-        x: midPoint.x,
-        y: midPoint.y + (yMax - yMin) * 0.1,
-        xref: "x",
-        yref: "y",
-        showarrow: false,
-        text: "▲ 📈 損益＋",
-        font: {
-          size: 12,
-          color: "rgba(0,128,0,0.4)",
-        },
-        bgcolor: "rgba(255,255,255,0.4)",
-        align: "center",
+        showlegend: false,
       },
       {
-        x: midPoint.x,
-        y: midPoint.y - (yMax - yMin) * 0.1,
-        xref: "x",
-        yref: "y",
-        showarrow: false,
-        text: "▼ 📉 損益−",
-        font: {
-          size: 12,
-          color: "rgba(255,0,0,0.4)",
+        type: "scatter",
+        mode: "lines",
+        x: [view.fxMin, view.fxMax],
+        y: [probe.price, probe.price],
+        line: { color: c.crosshair, width: 1, dash: "dot" },
+        hoverinfo: "skip",
+        showlegend: false,
+      },
+      // 掴めることを示す輪。マーカーのサイズはピクセル指定なので、
+      // 拡大率が変わっても大きさは一定に保たれる
+      {
+        type: "scatter",
+        mode: "markers",
+        x: [probe.fx],
+        y: [probe.price],
+        marker: {
+          color: "rgba(0,0,0,0)",
+          size: size(26),
+          symbol: "circle",
+          line: { color: c.accent, width: 2 },
         },
-        bgcolor: "rgba(255,255,255,0.4)",
-        align: "center",
+        hoverinfo: "skip",
+        showlegend: false,
+      },
+      {
+        type: "scatter",
+        mode: "markers",
+        name: "検討中の条件",
+        x: [probe.fx],
+        y: [probe.price],
+        marker: { color: c.accent, size: size(9), symbol: "circle" },
+        hoverinfo: "skip",
       }
     );
   }
 
-  const inRangePins = enrichedPins.filter(
-    (p) => p.fx >= xMin && p.fx <= xMax && p.price >= yMin && p.price <= yMax
-  );
-
-  const pinMarkers = {
-    type: "scatter",
-    mode: "markers+text",
-    x: inRangePins.map((p) => p.fx),
-    y: inRangePins.map((p) => p.price),
-    marker: {
-      color: "green",
-      size: 7,
-      symbol: "x",
-      opacity: 0.4,
-    },
-    text: inRangePins.map(() => `📍`),
-    textposition: "top center",
-    name: "注目ポイント",
-    hoverinfo: "skip",
-    showlegend: false,
-  };
-
-  const data = [breakEvenLine, contour, purchaseDots];
-  if (
-    averageDot &&
-    averagePoint.fx >= xMin &&
-    averagePoint.fx <= xMax &&
-    averagePoint.price >= yMin &&
-    averagePoint.price <= yMax
-  ) {
-    data.push(averageDot);
-  }
-
-  if (inRangePins.length > 0) data.push(pinMarkers);
-
-  // 不正なデータの警告を追加
-  if (invalidDataWarning) {
-    // テキストマーカーは削除し、アノテーションのみ使用
-
-    // 警告アノテーションを追加
-    const warningAnnotation = {
-      x: (fxVals[0] + fxVals[fxVals.length - 1]) / 2,
-      y: (priceVals[0] + priceVals[priceVals.length - 1]) / 2,
-      xref: "x",
-      yref: "y",
-      showarrow: false,
-      text: "⚠️ 「購入情報」の入力内容に問題があります。<br>もう一度ご確認ください。",
-      font: {
-        size: 14,
-        color: "#dc3545",
+  const pinsInView = graph.pins.filter((p) => inView(p, view));
+  if (pinsInView.length > 0) {
+    traces.push({
+      type: "scatter",
+      mode: "markers",
+      name: "売却候補ピン",
+      x: pinsInView.map((p) => p.fx),
+      y: pinsInView.map((p) => p.price),
+      marker: {
+        color: c.halo,
+        size: size(11),
+        symbol: "diamond",
+        line: { color: c.accent, width: 2 },
       },
-      bgcolor: "rgba(255, 255, 255, 0.95)",
-      bordercolor: "#dc3545",
-      borderwidth: 3,
-      align: "center",
-    };
-    annotations.push(warningAnnotation);
+      hoverinfo: "skip",
+    });
   }
 
-  // ピンの注釈（範囲外含む）
-  enrichedPins.forEach((p) => {
-    if (!p.showAnnotation) return;
+  /* ---- 注釈 ------------------------------------------------------------ */
+  const annotations = [];
+  const box = {
+    xref: "x",
+    yref: "y",
+    align: "left",
+    bgcolor: c.surface,
+    bordercolor: c.border,
+    borderwidth: 1,
+    borderpad: 4,
+    font: { size: size(10), color: c.font },
+  };
+  const midFx = (view.fxMin + view.fxMax) / 2;
+  const midPrice = (view.priceMin + view.priceMax) / 2;
 
-    const inRange =
-      p.fx >= xMin && p.fx <= xMax && p.price >= yMin && p.price <= yMax;
-    const isRight = p.fx > (xMin + xMax) / 2;
-    const isUpper = p.price > (yMin + yMax) / 2;
-
-    // 差分と損益（USD）計算
-    const fxDelta = p.fx - averagePoint.fx;
-    const priceDelta = p.price - averagePoint.price;
-    const profitUsd = p.price * totalQty - costDollar;
-
-    const fxDeltaStr = (fxDelta >= 0 ? "+" : "") + fxDelta.toFixed(2);
-    const priceDeltaStr = (priceDelta >= 0 ? "+" : "") + priceDelta.toFixed(2);
-    const profitYenStr =
-      (p.profitYen >= 0 ? "+" : "") + p.profitYen.toLocaleString();
-    const profitUsdStr = (profitUsd >= 0 ? "+" : "") + profitUsd.toFixed(2);
-
-    // 色判定（数値ベースに変更）
-    const usdColor = profitUsd > 0 ? "green" : profitUsd < 0 ? "red" : "black";
-    const yenColor =
-      p.profitYen > 0 ? "green" : p.profitYen < 0 ? "red" : "black";
-
-    const annotation = {
-      x: Math.min(Math.max(p.fx, xMin), xMax),
-      y: Math.min(Math.max(p.price, yMin), yMax),
-      xref: "x",
-      yref: "y",
+  /*
+    プローブに損益を直付けする。
+    ドラッグ中は Plotly のホバー（＝ツールチップ）が止まるため、これが無いと
+    「いま動かしている点の数字」を見るのにグラフから目を離す必要が出てしまう。
+  */
+  if (probe && inView(probe, view) && Number.isFinite(probe.profitYen)) {
+    annotations.push({
+      ...box,
+      x: probe.fx,
+      y: probe.price,
       showarrow: true,
       arrowhead: 4,
-      ax: isRight ? -40 : 40,
-      ay: isUpper ? 40 : -40,
-      bgcolor: inRange
-        ? "rgba(255, 255, 255, 0.7)"
-        : "rgba(255, 255, 255, 0.7)",
-      bordercolor: inRange ? p.color || "#006400" : "black",
-      font: { size: 8, color: "black" },
-      align: "left",
-      text: inRange
-        ? `💰 <b>売却候補情報</b><br>` +
-          `為替: ${p.fx.toFixed(2)} 円/USD（${fxDeltaStr}）<br>` +
-          `株価: ${p.price.toFixed(2)} USD（${priceDeltaStr}）<br>` +
-          `<b>損益（円）: <span style="color:${yenColor}">${profitYenStr} 円（${p.rateYen}）</span></b><br>` +
-          `<b>損益（USD）: <span style="color:${usdColor}">${profitUsdStr} USD（${p.rateUsd}）</span></b>`
-        : `📍 ピンは${p.fx < xMin ? "左" : p.fx > xMax ? "右" : ""}${
-            p.price < yMin ? "下" : p.price > yMax ? "上" : ""
-          }にあります`,
-    };
+      arrowcolor: c.accent,
+      bordercolor: c.accent,
+      borderwidth: 1.5,
+      font: { size: size(11), color: c.font },
+      // カーソルや指の下に隠れないよう、点から離れた側へ出す
+      ax: probe.fx > midFx ? -64 : 64,
+      ay: probe.price > midPrice ? 46 : -46,
+      // 円建てとUSD建ての符号が食い違うことがあるので、両方出す
+      text: [
+        `${formatNumber(probe.fx, 2)} 円/USD × $${formatUsd(probe.price)}`,
+        colored(
+          `<b>${formatSignedYen(probe.profitYen)} 円</b>（${formatSignedPct(probe.rateYenPct)}）`,
+          toneColor(probe.profitYen, c)
+        ),
+        colored(
+          `USD建て ${probe.profitUsd >= 0 ? "+" : "-"}$${formatUsd(Math.abs(probe.profitUsd ?? 0))}（${formatSignedPct(probe.rateUsdPct ?? 0)}）`,
+          toneColor(probe.profitUsd ?? 0, c)
+        ),
+      ].join("<br>"),
+    });
+  }
 
-    annotations.push(annotation);
-  });
-
-  // 範囲外の購入点を注釈で表示（境界にクランプして方向を付与）
-  purchases.forEach((p, idx) => {
-    const inRange =
-      p.fx >= xMin && p.fx <= xMax && p.price >= yMin && p.price <= yMax;
-    if (inRange) return;
-
-    const clampedX = Math.min(Math.max(p.fx, xMin), xMax);
-    const clampedY = Math.min(Math.max(p.price, yMin), yMax);
-    const isRight = clampedX > (xMin + xMax) / 2;
-    const isUpper = clampedY > (yMin + yMax) / 2;
-
-    const dirX = p.fx < xMin ? "左" : p.fx > xMax ? "右" : "";
-    const dirY = p.price < yMin ? "下" : p.price > yMax ? "上" : "";
-    const dir = `${dirX}${dirY}` || "外";
+  for (const pin of graph.pins) {
+    if (!pin.visible) continue;
+    const { x, y } = clampToView(pin, view);
+    const visible = inView(pin, view);
 
     annotations.push({
-      x: clampedX,
-      y: clampedY,
-      xref: "x",
-      yref: "y",
+      ...box,
+      x,
+      y,
       showarrow: true,
       arrowhead: 4,
-      ax: isRight ? -30 : 30,
-      ay: isUpper ? 30 : -30,
-      bgcolor: "rgba(255, 255, 255, 0.7)",
-      bordercolor: "black",
-      font: { size: 8, color: "black" },
-      align: "left",
-      text: `● 購入情報${idx + 1} は${dir}にあります`,
+      arrowcolor: c.border,
+      ax: pin.fx > midFx ? -50 : 50,
+      ay: pin.price > midPrice ? 40 : -40,
+      text: visible
+        ? [
+            `<b>売却候補</b> ${formatNumber(pin.fx, 2)} 円/USD × $${formatUsd(pin.price)}`,
+            `損益（円）: ${colored(
+              `${formatSignedYen(pin.profitYen)} 円（${formatSignedPct(pin.rateYenPct)}）`,
+              toneColor(pin.profitYen, c)
+            )}`,
+            `損益（USD）: ${colored(
+              `${pin.profitUsd >= 0 ? "+" : "-"}$${formatUsd(Math.abs(pin.profitUsd))}（${formatSignedPct(pin.rateUsdPct)}）`,
+              toneColor(pin.profitUsd, c)
+            )}`,
+          ].join("<br>")
+        : `ピンは${directionOf(pin, view)}にあります`,
+    });
+  }
+
+  graph.purchases.forEach((purchase, index) => {
+    if (inView(purchase, view)) return;
+    const { x, y } = clampToView(purchase, view);
+    annotations.push({
+      ...box,
+      x,
+      y,
+      showarrow: true,
+      arrowhead: 4,
+      arrowcolor: c.border,
+      ax: x > midFx ? -36 : 36,
+      ay: y > midPrice ? 30 : -30,
+      text: `購入情報 ${index + 1} は${directionOf(purchase, view)}にあります`,
     });
   });
 
-  // 平均点の注釈（範囲外のみ）
-  if (
-    averagePoint &&
-    (averagePoint.fx < xMin ||
-      averagePoint.fx > xMax ||
-      averagePoint.price < yMin ||
-      averagePoint.price > yMax)
-  ) {
-    const dir = `${
-      averagePoint.fx < xMin ? "左" : averagePoint.fx > xMax ? "右" : ""
-    }${
-      averagePoint.price < yMin ? "下" : averagePoint.price > yMax ? "上" : ""
-    }`;
+  if (graph.averagePoint && !inView(graph.averagePoint, view)) {
+    const { x, y } = clampToView(graph.averagePoint, view);
     annotations.push({
-      x: Math.min(Math.max(averagePoint.fx, xMin), xMax),
-      y: Math.min(Math.max(averagePoint.price, yMin), yMax),
-      xref: "x",
-      yref: "y",
+      ...box,
+      x,
+      y,
       showarrow: true,
       arrowhead: 6,
+      arrowcolor: c.ink,
+      bordercolor: c.border,
       ax: 0,
-      ay: -60,
-      font: { size: 10, color: "red" },
-      bgcolor: "#fff0f0",
-      bordercolor: "red",
-      text: `⭐ 平均点は${dir}にあります`,
+      ay: y > midPrice ? 40 : -40,
+      text: `平均購入点は${directionOf(graph.averagePoint, view)}にあります`,
     });
   }
 
-  // レスポンシブ対応のレイアウト設定
+  // 画像として切り出すときは、グラフだけ見て内容が分かるように前提を焼き込む
+  if (forExport) {
+    const { aggregate } = graph;
+    annotations.push({
+      xref: "paper",
+      yref: "paper",
+      x: 0.99,
+      y: 1.13,
+      xanchor: "right",
+      yanchor: "top",
+      showarrow: false,
+      align: "right",
+      bgcolor: c.surface,
+      bordercolor: c.border,
+      borderwidth: 1,
+      borderpad: 6,
+      font: { size: 11, color: c.font },
+      text: [
+        `合計 ${aggregate.totalQty.toLocaleString("ja-JP")} 株`,
+        `平均取得価額 ${formatNumber(aggregate.avgAcqYen, 2)} 円/株`,
+        `取得総額 ${formatYen(aggregate.totalCostYen)} 円`,
+        "※手数料・税は購入情報に入力した分のみ反映",
+      ].join("<br>"),
+    });
+  }
+
+  /* ---- レイアウト ------------------------------------------------------ */
+  const axis = {
+    showgrid: true,
+    gridcolor: c.grid,
+    zeroline: false,
+    fixedrange: true,
+    tickfont: { size: size(11) },
+  };
+
   const layout = {
-    title: "為替 × 株価 における損益分岐グラフ",
-    titlefont: { size: 14 },
+    autosize: !forExport,
+    paper_bgcolor: forExport
+      ? themeName === "dark"
+        ? "#212529"
+        : "#ffffff"
+      : "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: c.font, family: resolveFontFamily() },
+    margin: forExport
+      ? { l: 78, r: 20, t: 90, b: 68 }
+      : { l: 62, r: 12, t: 34, b: 52 },
     xaxis: {
-      title: "為替レート（円/USD）",
-      titlefont: { size: 12 },
-      tickfont: { size: 10 },
-      autorange: false,
-      range: [xMin, xMax],
-      fixedrange: true,
+      ...axis,
+      title: { text: "為替レート（円/USD）", font: { size: size(12) } },
+      range: [view.fxMin, view.fxMax],
     },
     yaxis: {
-      title: "売却株価（USD）",
-      titlefont: { size: 12 },
-      tickfont: { size: 10 },
-      autorange: false,
-      range: [yMin, yMax],
-      fixedrange: true,
+      ...axis,
+      title: { text: "売却株価（USD）", font: { size: size(12) } },
+      range: [view.priceMin, view.priceMax],
     },
-    height: window.innerWidth < 768 ? 450 : 700,
     hovermode: false,
-    hoverlabel: {
-      bgcolor: "transparent",
-      bordercolor: "transparent",
-      font: { color: "transparent", size: 0 },
-      align: "left",
-    },
-    // スマホでのホバー表示最適化
-    hoverdistance: window.innerWidth < 768 ? 50 : 20,
-    annotations,
+    dragmode: false,
+    showlegend: true,
     legend: {
-      x: 0,
-      y: 1,
-      xanchor: "left",
-      yanchor: "top",
-      font: { size: 12 },
-      itemsizing: "constant",
-      bgcolor: "rgba(255,255,255,0.6)",
-      bordercolor: "rgba(204,204,204,0.5)",
-      borderwidth: 0.5,
-      traceorder: "normal",
       orientation: "h",
+      yanchor: "bottom",
+      y: 1.01,
+      x: 0,
+      font: { size: size(11) },
+      bgcolor: "rgba(0,0,0,0)",
     },
-    dragmode: "none",
-    margin: {
-      l: 50,
-      r: 15,
-      t: 50,
-      b: 50,
-    },
+    annotations,
   };
+
+  return { traces, layout };
+}
+
+/**
+ * @param {Object} options
+ * @param {HTMLElement} options.node グラフを描く要素
+ * @param {(point:{fx:number, price:number}) => void} options.onPick
+ *   クリック・タップ・ドラッグで座標が選ばれたときに呼ばれる
+ */
+export function createPlot({ node, onPick }) {
+  let bound = false;
+  /** 直近に描いた表示範囲。ピクセル→データ変換に使う */
+  let currentView = null;
+  /** 直近に描いたプローブ位置。タッチで掴めるかの判定に使う */
+  let currentProbe = null;
+
+  /** グラフ座標をポインタ座標へ（toDataPoint の逆） */
+  function toPixelPoint(point) {
+    const rect = node.querySelector(".nsewdrag")?.getBoundingClientRect();
+    if (!rect?.width || !rect?.height || !currentView) return null;
+
+    const { fxMin, fxMax, priceMin, priceMax } = currentView;
+    return {
+      x: rect.left + ((point.fx - fxMin) / (fxMax - fxMin)) * rect.width,
+      y:
+        rect.top +
+        ((priceMax - point.price) / (priceMax - priceMin)) * rect.height,
+    };
+  }
+
+  /**
+   * ポインタ／タッチ座標をグラフの座標へ変換する。
+   *
+   * プロット領域の矩形は Plotly が置く .nsewdrag（ドラッグ受け）から取る。
+   * 余白を自前で計算していた旧実装と違い、実際の描画結果を読むので
+   * レイアウト変更やレスポンシブでずれない。
+   * 軸の範囲は fixedrange で固定しており、こちら（state）が持つ値と一致する。
+   */
+  function toDataPoint(event) {
+    const rect = node.querySelector(".nsewdrag")?.getBoundingClientRect();
+    if (!rect?.width || !rect?.height || !currentView) return null;
+
+    const ratioX = (event.clientX - rect.left) / rect.width;
+    const ratioY = (event.clientY - rect.top) / rect.height;
+    if (ratioX < 0 || ratioX > 1 || ratioY < 0 || ratioY > 1) return null;
+
+    const { fxMin, fxMax, priceMin, priceMax } = currentView;
+    return {
+      fx: fxMin + ratioX * (fxMax - fxMin),
+      price: priceMax - ratioY * (priceMax - priceMin), // y は上が最大
+    };
+  }
 
   const config = {
-    displayModeBar: true,
+    displayModeBar: false,
+    responsive: true,
     scrollZoom: false,
     doubleClick: false,
-    modeBarButtonsToRemove: [
-      "zoom2d",
-      "zoomIn2d",
-      "zoomOut2d",
-      "autoScale2d",
-      "select2d",
-      "lasso2d",
-      "resetScale2d",
-      "pan2d",
-    ],
-    responsive: true,
-    // スマホでのタッチ操作最適化
-    displayModeBar: window.innerWidth >= 768,
+    locale: "ja",
   };
 
-  // パフォーマンス最適化のための変数
-  let lastHoverTime = 0;
-  let hoverThrottle = 50;
-  let currentHoverAnnotation = null;
-  let isMobile = window.innerWidth < 768;
-  let touchTimeout = null;
-  let mouseMoveTimeout = null;
-  let hoverAnnotationIndex = -1;
+  return {
+    /**
+     * @param {ReturnType<typeof import("../model/calc.js").calculateGraphData>} graph
+     * @param {{fxMin:number,fxMax:number,priceMin:number,priceMax:number}} view
+     * @param {"light"|"dark"} themeName
+     * @param {{currentPoint?: {fx:number, price:number}|null}} [options]
+     */
+    async render(graph, view, themeName, options = {}) {
+      currentView = view;
+      currentProbe = options.probe ?? null;
+      const { traces, layout } = buildFigure(graph, view, themeName, options);
 
-  Plotly.newPlot("plot", data, layout, config).then(() => {
-    // ホバーイベントでアノテーションマーカーを更新
-    const plotDiv = document.getElementById("plot");
+      // newPlot ではなく react。イベント購読を保ったまま差分更新される
+      await Plotly.react(node, traces, layout, config);
 
-    // 超高速なホバー情報表示関数（SVG直接操作）
-    function showHoverInfo(graphX, graphY, purchases, totalQty, costDollar) {
-      const mobileHoverInfo = document.getElementById("mobile-hover-info");
-      const hoverDetails = document.getElementById("hover-details");
+      if (bound) return;
+      bound = true;
 
-      // SVG要素を直接操作して高速化
-      let hoverElement = document.getElementById("hover-marker");
-      if (!hoverElement) {
-        // ホバー要素が存在しない場合は作成
-        const svg = plotDiv.querySelector("svg");
-        if (svg) {
-          // 外側の円（ターゲット風）
-          const outerCircle = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "circle"
-          );
-          outerCircle.setAttribute("id", "hover-marker-outer");
-          outerCircle.setAttribute("r", "12");
-          outerCircle.setAttribute("fill", "rgba(255, 255, 255, 0.95)");
-          outerCircle.setAttribute("stroke", "#dc3545");
-          outerCircle.setAttribute("stroke-width", "2");
-          svg.appendChild(outerCircle);
+      /*
+        マウスは押した瞬間から離すまで自前で追う。
+        Plotly 任せだとドラッグ中の位置が通知されず、数字が固まってしまう。
+      */
+      let dragging = false;
 
-          // 中間の円（リング状）
-          const middleCircle = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "circle"
-          );
-          middleCircle.setAttribute("id", "hover-marker-middle");
-          middleCircle.setAttribute("r", "8");
-          middleCircle.setAttribute("fill", "none");
-          middleCircle.setAttribute("stroke", "#dc3545");
-          middleCircle.setAttribute("stroke-width", "2");
-          svg.appendChild(middleCircle);
+      node.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "mouse" || event.button !== 0) return;
 
-          // 内側の円（中心）
-          const innerCircle = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "circle"
-          );
-          innerCircle.setAttribute("id", "hover-marker-inner");
-          innerCircle.setAttribute("r", "4");
-          innerCircle.setAttribute("fill", "#dc3545");
-          svg.appendChild(innerCircle);
+        const point = toDataPoint(event);
+        if (!point) return;
+        dragging = true;
+        onPick(point);
+      });
 
-          // 中央の点
-          const centerDot = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "circle"
-          );
-          centerDot.setAttribute("id", "hover-marker");
-          centerDot.setAttribute("r", "1.5");
-          centerDot.setAttribute("fill", "white");
-          svg.appendChild(centerDot);
-        }
+      // ドラッグ中の移動は Plotly が body に被せる要素に飛ぶので document で受ける
+      document.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        const point = toDataPoint(event);
+        if (point) onPick(point);
+      });
+
+      for (const type of ["pointerup", "pointercancel"]) {
+        document.addEventListener(type, () => {
+          dragging = false;
+        });
       }
 
-      if (hoverElement) {
-        // 座標変換（Plotlyの座標系からSVG座標系へ）
-        const layout = plotDiv.layout;
-        const xRange = layout.xaxis.range;
-        const yRange = layout.yaxis.range;
-        const margin = layout.margin;
+      /*
+        タッチも自前で処理する。Plotly の click 判定はホバー判定に依存しており、
+        吹き出しを止める（hovermode: false）と plotly_click ごと発火しなくなるため。
 
-        const svgWidth = plotDiv.clientWidth - margin.l - margin.r;
-        const svgHeight = plotDiv.clientHeight - margin.t - margin.b;
+        - プローブの近くから始まった場合はドラッグ（指に追従）
+        - ほとんど動かずに離した場合はタップ（その位置へ置く）
+        - 大きく動いた場合はスワイプとみなし、ページのスクロールに任せる
+      */
+      const TOUCH_GRAB_PX = 32;
+      const TAP_MOVE_PX = 12;
+      /** @type {{x:number, y:number, dragging:boolean}|null} */
+      let touchStart = null;
 
-        const xRatio = (graphX - xRange[0]) / (xRange[1] - xRange[0]);
-        const yRatio = (graphY - yRange[0]) / (yRange[1] - yRange[0]);
-
-        const svgX = margin.l + xRatio * svgWidth;
-        const svgY = margin.t + (1 - yRatio) * svgHeight;
-
-        // 複数の要素を同時に更新
-        const outerCircle = document.getElementById("hover-marker-outer");
-        const middleCircle = document.getElementById("hover-marker-middle");
-        const innerCircle = document.getElementById("hover-marker-inner");
-
-        if (outerCircle) {
-          outerCircle.setAttribute("cx", svgX.toString());
-          outerCircle.setAttribute("cy", svgY.toString());
-          outerCircle.style.display = "block";
-        }
-
-        if (middleCircle) {
-          middleCircle.setAttribute("cx", svgX.toString());
-          middleCircle.setAttribute("cy", svgY.toString());
-          middleCircle.style.display = "block";
-        }
-
-        if (innerCircle) {
-          innerCircle.setAttribute("cx", svgX.toString());
-          innerCircle.setAttribute("cy", svgY.toString());
-          innerCircle.style.display = "block";
-        }
-
-        hoverElement.setAttribute("cx", svgX.toString());
-        hoverElement.setAttribute("cy", svgY.toString());
-        hoverElement.style.display = "block";
-      }
-
-      // 損益計算（某証券寄せの円評価ロジックで表示値を算出）
-      const currentValueYen = Math.trunc(graphX * graphY * totalQty);
-      const avgAcqYen = totalQty > 0 ? (totalCostYen || 0) / totalQty : 0;
-      const { profitLossYen: profitYen, profitLossRatePct: rateYen } =
-        computeYenValuationTruncTowardZero(
-          avgAcqYen,
-          totalQty,
-          currentValueYen
-        );
-      const profitUsd = graphY * totalQty - costDollar;
-
-      // 安全な割り算関数
-      const safeDiv = (a, b) => (b && !isNaN(b) ? a / b : 0);
-
-      const avgFx = safeDiv(
-        purchases.reduce((sum, p) => sum + p.fx * p.qty, 0),
-        totalQty
-      );
-      const avgPrice = safeDiv(
-        purchases.reduce((sum, p) => sum + p.price * p.qty, 0),
-        totalQty
-      );
-
-      const fxDelta = graphX - avgFx;
-      const priceDelta = graphY - avgPrice;
-
-      // 損益率計算（NaNを防ぐ）
-      const baseYen = avgPrice * avgFx * totalQty;
-      const baseUsd = avgPrice * totalQty;
-      // rateYen は computeYenValuationTruncTowardZero の結果（小数2桁切り捨て）を使用
-      const rateUsd = baseUsd ? ((profitUsd / baseUsd) * 100).toFixed(2) : "-";
-
-      // 4行テキストを生成
-      const hoverText =
-        `為替: ${graphX.toFixed(2)} 円/USD (${
-          fxDelta >= 0 ? "+" : ""
-        }${fxDelta.toFixed(2)})\n` +
-        `株価: ${graphY.toFixed(2)} USD (${
-          priceDelta >= 0 ? "+" : ""
-        }${priceDelta.toFixed(2)})\n` +
-        `損益（円）: ${profitYen >= 0 ? "+" : ""}${Math.round(
-          profitYen
-        ).toLocaleString()} 円 (${rateYen}%)\n` +
-        `損益（USD）: ${profitUsd >= 0 ? "+" : ""}${profitUsd.toFixed(
-          2
-        )} USD (${rateUsd}%)`;
-
-      // 現在のホバー情報を保存
-      window.currentHoverInfo = {
-        x: graphX,
-        y: graphY,
-        text: hoverText,
-        purchases: purchases,
-        totalQty: totalQty,
-        costDollar: costDollar,
-      };
-
-      // DOM操作を最小限に
-      if (hoverDetails) {
-        hoverDetails.innerHTML = `
-          <div class="mb-1">
-            <strong>為替:</strong> ${graphX.toFixed(
-              2
-            )} 円/USD <span style="color: ${
-          fxDelta >= 0 ? "#28a745" : "#dc3545"
-        }">(${fxDelta >= 0 ? "+" : ""}${fxDelta.toFixed(2)})</span><br>
-            <strong>株価:</strong> ${graphY.toFixed(
-              2
-            )} USD <span style="color: ${
-          priceDelta >= 0 ? "#28a745" : "#dc3545"
-        }">(${priceDelta >= 0 ? "+" : ""}${priceDelta.toFixed(2)})</span>
-          </div>
-          <div class="mb-1">
-            <strong>損益（円）:</strong><br>
-            <span style="color: ${profitYen >= 0 ? "#28a745" : "#dc3545"}">
-              ${profitYen >= 0 ? "+" : ""}${Math.round(
-          profitYen
-        ).toLocaleString()} 円 (${rateYen}%)
-            </span>
-          </div>
-          <div>
-            <strong>損益（USD）:</strong><br>
-            <span style="color: ${profitUsd >= 0 ? "#28a745" : "#dc3545"}">
-              ${profitUsd >= 0 ? "+" : ""}${profitUsd.toFixed(
-          2
-        )} USD (${rateUsd}%)
-            </span>
-          </div>
-        `;
-      }
-
-      if (mobileHoverInfo) {
-        mobileHoverInfo.style.display = "block";
-      }
-    }
-
-    // ホバー情報をクリアする関数（SVG直接操作）
-    function clearHoverInfo() {
-      // SVG要素を直接操作して高速化
-      const hoverElement = document.getElementById("hover-marker");
-      const outerCircle = document.getElementById("hover-marker-outer");
-      const middleCircle = document.getElementById("hover-marker-middle");
-      const innerCircle = document.getElementById("hover-marker-inner");
-
-      if (hoverElement) {
-        hoverElement.style.display = "none";
-      }
-      if (outerCircle) {
-        outerCircle.style.display = "none";
-      }
-      if (middleCircle) {
-        middleCircle.style.display = "none";
-      }
-      if (innerCircle) {
-        innerCircle.style.display = "none";
-      }
-
-      const mobileHoverInfo = document.getElementById("mobile-hover-info");
-      if (mobileHoverInfo) {
-        mobileHoverInfo.style.display = "none";
-      }
-    }
-
-    // スマホ用のタッチイベント処理
-    if (isMobile) {
-      const mobileHoverInfo = document.getElementById("mobile-hover-info");
-      const hoverDetails = document.getElementById("hover-details");
-
-      // タッチ開始イベント（デバウンス処理）
-      plotDiv.addEventListener(
+      node.addEventListener(
         "touchstart",
-        (e) => {
-          // グラフ内のタッチのみ処理
-          const touch = e.touches[0];
-          const rect = plotDiv.getBoundingClientRect();
-          const x = touch.clientX - rect.left;
-          const y = touch.clientY - rect.top;
-
-          // タッチ位置をグラフ座標に変換
-          const layout = plotDiv.layout;
-
-          // 簡易的な座標変換
-          const xRange = layout.xaxis.range;
-          const yRange = layout.yaxis.range;
-          const xRatio =
-            (x - layout.margin.l) /
-            (rect.width - layout.margin.l - layout.margin.r);
-          const yRatio =
-            (y - layout.margin.t) /
-            (rect.height - layout.margin.t - layout.margin.b);
-
-          const graphX = xRange[0] + (xRange[1] - xRange[0]) * xRatio;
-          const graphY = yRange[1] - (yRange[1] - yRange[0]) * yRatio;
-
-          // グラフ範囲内かチェック
-          if (
-            graphX >= xRange[0] &&
-            graphX <= xRange[1] &&
-            graphY >= yRange[0] &&
-            graphY <= yRange[1]
-          ) {
-            // グラフ内のタッチのみ処理（イベントは停止しない）
-
-            // 現在のホバー情報を保存
-            window.currentHoverInfo = {
-              graphX: graphX,
-              graphY: graphY,
-              purchases: purchases,
-              totalQty: totalQty,
-              costDollar: costDollar,
-            };
-
-            // 最適化されたホバー情報表示
-            showHoverInfo(graphX, graphY, purchases, totalQty, costDollar);
-
-            // 既存のタイマーをクリア（自動削除を無効化）
-            if (touchTimeout) clearTimeout(touchTimeout);
-          } else {
-            // 範囲外の場合はホバー情報をクリア
-            clearHoverInfo();
+        (event) => {
+          if (event.touches.length !== 1) {
+            touchStart = null;
+            return;
           }
+          const touch = event.touches[0];
+          const origin = currentProbe ? toPixelPoint(currentProbe) : null;
+          const nearProbe =
+            origin != null &&
+            Math.hypot(touch.clientX - origin.x, touch.clientY - origin.y) <=
+              TOUCH_GRAB_PX;
+          touchStart = {
+            x: touch.clientX,
+            y: touch.clientY,
+            dragging: nearProbe,
+          };
         },
         { passive: true }
       );
 
-      // タッチエンドイベント（タッチが終わっても情報を保持）
-      plotDiv.addEventListener(
-        "touchend",
-        (e) => {
-          // タッチが終わっても情報を保持する（自動消去はタイマーに任せる）
+      node.addEventListener(
+        "touchmove",
+        (event) => {
+          if (!touchStart?.dragging || event.touches.length !== 1) return;
+          // ドラッグ中はページを動かさない
+          event.preventDefault();
+          const point = toDataPoint(event.touches[0]);
+          if (point) onPick(point);
         },
-        { passive: true }
+        { passive: false }
       );
 
-      // タッチキャンセルイベント（タッチがキャンセルされても情報を保持）
-      plotDiv.addEventListener(
-        "touchcancel",
-        (e) => {
-          // タッチがキャンセルされても情報を保持する
-        },
-        { passive: true }
-      );
-    } else {
-      // PC用のマウスホバー処理（超高速版）
-      plotDiv.addEventListener("mousemove", (e) => {
-        const rect = plotDiv.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+      node.addEventListener("touchend", (event) => {
+        const start = touchStart;
+        touchStart = null;
+        // ドラッグ済み、またはスワイプ（＝スクロール意図）なら何もしない
+        if (!start || start.dragging) return;
 
-        // マウス位置をグラフ座標に変換
-        const layout = plotDiv.layout;
-        const xRange = layout.xaxis.range;
-        const yRange = layout.yaxis.range;
-        const xRatio =
-          (x - layout.margin.l) /
-          (rect.width - layout.margin.l - layout.margin.r);
-        const yRatio =
-          (y - layout.margin.t) /
-          (rect.height - layout.margin.t - layout.margin.b);
+        const touch = event.changedTouches[0];
+        const moved = Math.hypot(
+          touch.clientX - start.x,
+          touch.clientY - start.y
+        );
+        if (moved > TAP_MOVE_PX) return;
 
-        const graphX = xRange[0] + (xRange[1] - xRange[0]) * xRatio;
-        const graphY = yRange[1] - (yRange[1] - yRange[0]) * yRatio;
-
-        // グラフ範囲内かチェック
-        if (
-          graphX >= xRange[0] &&
-          graphX <= xRange[1] &&
-          graphY >= yRange[0] &&
-          graphY <= yRange[1]
-        ) {
-          // ホバー情報表示
-          showHoverInfo(graphX, graphY, purchases, totalQty, costDollar);
-        } else {
-          // 範囲外の場合はホバー情報をクリア
-          clearHoverInfo();
-        }
+        const point = toDataPoint(touch);
+        if (point) onPick(point);
       });
 
-      // マウスがグラフから離れた時の処理
-      plotDiv.addEventListener("mouseleave", () => {
-        clearHoverInfo();
+      node.addEventListener("touchcancel", () => {
+        touchStart = null;
       });
-    }
+    },
 
-    // 閉じるボタンのイベント
-    const closeButton = document.getElementById("close-hover-info");
-    if (closeButton) {
-      closeButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        clearHoverInfo();
-      });
-    }
-  });
+    /**
+     * 実際に描かれたプロット領域（軸ラベルの内側）を、グラフ要素からの相対位置で返す。
+     * 軸に沿わせたスライダーの長さと位置を合わせるために使う。
+     * @returns {{left:number, top:number, width:number, height:number}|null}
+     */
+    getPlotArea() {
+      const area = node.querySelector(".nsewdrag")?.getBoundingClientRect();
+      if (!area?.width || !area?.height) return null;
+      const host = node.getBoundingClientRect();
+      return {
+        left: area.left - host.left,
+        top: area.top - host.top,
+        width: area.width,
+        height: area.height,
+      };
+    },
 
-  const avgPrice =
-    purchases.reduce((sum, p) => sum + p.price * p.qty, 0) / totalQty;
-  const avgFx = purchases.reduce((sum, p) => sum + p.fx * p.qty, 0) / totalQty;
+    /** 描画サイズの変化を通知する（レスポンシブ時の再計測用） */
+    onResize(listener) {
+      const observer = new ResizeObserver(() => listener());
+      observer.observe(node);
+      return () => observer.disconnect();
+    },
 
-  const avgInfo = document.getElementById("average-info");
-  avgInfo.innerHTML = `
-    <div style="text-align: left;">
-
-      <div>購入時の平均為替（円/USD）: <span class="text-success">¥ ${avgFx.toFixed(
-        2
-      )}</span></div>
-      <div>購入時の平均株価: <span class="text-primary">$ ${avgPrice.toFixed(
-        2
-      )}</span></div>
-      <div>合計株数: <span class="text-dark">${totalQty}</span> 株</div>
-      <div class="text-muted small mt-2">注）表示される損益・損益率には手数料・税は含まれていません</div>
-    </div>
-  `;
+    /** グラフを破棄する（ページ遷移のない構成なので通常は使わない） */
+    destroy() {
+      Plotly.purge(node);
+      bound = false;
+    },
+  };
 }

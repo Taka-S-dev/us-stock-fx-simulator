@@ -1,112 +1,99 @@
 // view/toast.js
+// 通知は必ずこのモジュール経由。alert / confirm は使わない
+// （alert はページ全体をブロックし、モバイルでの体験を壊す）。
+
+import { el, need } from "./dom.js";
+
+const TONE = {
+  success: { class: "text-bg-success", icon: "✓", label: "完了" },
+  info: { class: "text-bg-primary", icon: "ℹ", label: "お知らせ" },
+  warning: { class: "text-bg-warning", icon: "⚠", label: "注意" },
+  error: { class: "text-bg-danger", icon: "✕", label: "エラー" },
+};
 
 /**
- * トーストメッセージを表示
- * @param {string} message - 表示するメッセージ
- * @param {string} type - メッセージタイプ ('success', 'warning', 'error', 'info')
+ * @param {string} message
+ * @param {"success"|"info"|"warning"|"error"} [tone]
  */
-export function showToast(message, type = "info") {
+export function showToast(message, tone = "info") {
+  const spec = TONE[tone] ?? TONE.info;
+
   try {
-    const toastBody = document.getElementById("toast-body");
-    const toastEl = document.getElementById("toast-message");
+    const container = need("#toast-container");
+    const toast = el(
+      "div",
+      {
+        class: `toast align-items-center border-0 ${spec.class}`,
+        role: tone === "error" ? "alert" : "status",
+        "aria-live": tone === "error" ? "assertive" : "polite",
+        "aria-atomic": "true",
+      },
+      [
+        el("div", { class: "d-flex" }, [
+          el("div", { class: "toast-body" }, [
+            el("span", {
+              class: "me-2",
+              "aria-hidden": "true",
+              text: spec.icon,
+            }),
+            el("span", { class: "visually-hidden", text: `${spec.label}: ` }),
+            message,
+          ]),
+          el("button", {
+            type: "button",
+            class: "btn-close btn-close-white me-2 m-auto",
+            "data-bs-dismiss": "toast",
+            "aria-label": "閉じる",
+          }),
+        ]),
+      ]
+    );
 
-    if (!toastBody || !toastEl) {
-      console.error("トースト要素が見つかりません");
-      return;
-    }
-
-    // メッセージの検証
-    if (!message || typeof message !== "string") {
-      console.error("無効なトーストメッセージ:", message);
-      return;
-    }
-
-    // メッセージタイプに応じたスタイル設定
-    const toastContainer = toastEl.closest(".toast-container");
-    if (toastContainer) {
-      // 既存のクラスをクリア
-      toastContainer.className =
-        "toast-container position-fixed top-0 end-0 p-3";
-
-      // モーダルが開いているかチェック
-      const mobileModal = document.getElementById("mobileModal");
-      const rangeModal = document.getElementById("rangeModal");
-      const isModalOpen =
-        (mobileModal && mobileModal.classList.contains("show")) ||
-        (rangeModal && rangeModal.classList.contains("show"));
-
-      // モーダルが開いている場合は位置を調整
-      if (isModalOpen && window.innerWidth <= 768) {
-        toastContainer.className =
-          "toast-container position-fixed bottom-0 start-50 translate-middle-x p-3";
-        toastContainer.style.zIndex = "1090";
-      }
-
-      // タイプに応じたクラスを追加
-      switch (type) {
-        case "success":
-          toastContainer.classList.add("text-success");
-          break;
-        case "warning":
-          toastContainer.classList.add("text-warning");
-          break;
-        case "error":
-          toastContainer.classList.add("text-danger");
-          break;
-        case "info":
-        default:
-          toastContainer.classList.add("text-info");
-          break;
-      }
-    }
-
-    // メッセージを設定
-    toastBody.textContent = message;
-
-    // トーストを表示
-    const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
-    toast.show();
-
-    // デバッグログ
-  } catch (error) {
-    console.error("トースト表示エラー:", error);
-    // フォールバック: alertで表示
-    try {
-      alert(`[${type.toUpperCase()}] ${message}`);
-    } catch (fallbackError) {
-      console.error("フォールバック表示も失敗:", fallbackError);
-    }
+    container.append(toast);
+    toast.addEventListener("hidden.bs.toast", () => toast.remove());
+    bootstrap.Toast.getOrCreateInstance(toast, { delay: 4000 }).show();
+  } catch (e) {
+    // トーストが出せない状況でも処理は続行させる（通知は補助的な機能）
+    console.error(`[${tone}] ${message}`, e);
   }
 }
 
 /**
- * 成功メッセージを表示
- * @param {string} message - 表示するメッセージ
+ * 破壊的操作の確認。Bootstrap のモーダルで確認を取り、Promise<boolean> を返す。
+ * @param {{title:string, body:string, confirmLabel?:string, tone?:"danger"|"primary"}} options
+ * @returns {Promise<boolean>}
  */
-export function showSuccessToast(message) {
-  showToast(message, "success");
-}
+export function confirmDialog({
+  title,
+  body,
+  confirmLabel = "実行する",
+  tone = "danger",
+}) {
+  const modalEl = need("#confirm-modal");
+  need("#confirm-modal-title", modalEl).textContent = title;
+  need("#confirm-modal-body", modalEl).textContent = body;
 
-/**
- * 警告メッセージを表示
- * @param {string} message - 表示するメッセージ
- */
-export function showWarningToast(message) {
-  showToast(message, "warning");
-}
+  const okButton = /** @type {HTMLButtonElement} */ (
+    need("#confirm-modal-ok", modalEl)
+  );
+  okButton.textContent = confirmLabel;
+  okButton.className = `btn btn-${tone}`;
 
-/**
- * エラーメッセージを表示
- * @param {string} message - 表示するメッセージ
- */
-export function showErrorToast(message) {
-  showToast(message, "error");
-}
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
-/**
- * 情報メッセージを表示
- * @param {string} message - 表示するメッセージ
- */
-export function showInfoToast(message) {
-  showToast(message, "info");
+  return new Promise((resolve) => {
+    let accepted = false;
+    const onOk = () => {
+      accepted = true;
+      modal.hide();
+    };
+    const onHidden = () => {
+      okButton.removeEventListener("click", onOk);
+      modalEl.removeEventListener("hidden.bs.modal", onHidden);
+      resolve(accepted);
+    };
+    okButton.addEventListener("click", onOk);
+    modalEl.addEventListener("hidden.bs.modal", onHidden);
+    modal.show();
+  });
 }
