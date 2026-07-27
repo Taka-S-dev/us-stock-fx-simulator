@@ -20,7 +20,6 @@ import {
 import {
   formatNumber,
   formatSignedPct,
-  formatSignedYen,
   formatTimestamp,
   formatUsd,
 } from "../utils/format.js";
@@ -401,17 +400,28 @@ export function startApp() {
     const current = selectCurrentValuation(store.getState());
     if (!current) return;
 
-    const lines = [
-      "📈 米国株 × 為替 損益分岐シミュレーション",
-      `現在の含み損益: ${formatSignedYen(current.valuation.profitYen)} 円（${formatSignedPct(current.valuation.rateYenPct)}）`,
-      `平均取得価額: ${formatNumber(current.aggregate.avgAcqYen, 2)} 円/株`,
-    ];
+    /*
+      金額は載せない。
+
+      以前は含み損益の実額と平均取得価額を入れていたが、この2つと損益率から
+      保有量まで逆算できる（取得総額 = 損益 ÷ 損益率、株数 = 取得総額 ÷ 平均取得価額）。
+      押すと X の投稿画面が開くだけで即投稿ではないにせよ、
+      そこまで書いた文面を既定で用意するかどうかはアプリ側の判断になる。
+
+      率と分岐点なら、どんな銘柄をどれだけ持っているかは分からないまま、
+      「為替がここまで動くと ±0」という話の中身は伝わる。
+      リンク先がツールのトップであることとも辻褄が合う。
+    */
+    const lines = ["📈 米国株 × 為替 損益分岐シミュレーション"];
     if (current.breakEven) {
       lines.push(
         `為替 ${formatNumber(current.point.fx, 1)} 円なら $${formatUsd(current.breakEven.breakEvenPrice)} が損益分岐`
       );
     }
-    lines.push("#米国株 #為替 #損益シミュレーション");
+    lines.push(
+      `現在の含み損益 ${formatSignedPct(current.valuation.rateYenPct)}`,
+      "#米国株 #為替"
+    );
 
     const url = new URL("https://twitter.com/intent/tweet");
     url.searchParams.set("text", lines.join("\n"));
