@@ -5,10 +5,8 @@
 import {
   formatNumber,
   formatSignedPct,
-  formatSignedUsd,
   formatSignedYen,
   formatUsd,
-  formatYen,
   toneClass,
 } from "../utils/format.js";
 import { clear, el, syncValue } from "./dom.js";
@@ -66,26 +64,31 @@ export function createCurrentPosition({
               text: formatSignedPct(valuation.rateYenPct),
             }),
           ]),
-          // 項目ごとに span に分ける。1つの文にすると途中で折り返して読みにくい
-          // 一番大きい数字が仮の値から出ていることは、数字のそばで断らないと伝わらない
+          /*
+            一番大きい数字が仮の値から出ていることは、数字のそばで断らないと伝わらない。
+            ただし塗りつぶしの枠で囲むと、初期状態（株価が未入力）で必ず出る注記が
+            エラー表示に見える。色と位置だけで足りるので、囲みは持たせない。
+          */
           point.priceAuto &&
             el("p", { class: "current-placeholder mb-0" }, [
-              "現在の株価が未入力です。平均取得価額で計算しているので、",
+              "株価が未入力のため、",
               el("strong", { text: "為替の影響だけ" }),
-              "を表しています。",
+              "を表しています",
             ]),
-
-          el("p", { class: "current-sub mb-0" }, [
-            el("span", { text: `評価額 ${formatYen(valuation.valueYen)} 円` }),
-            el("span", {
-              text: `取得総額 ${formatYen(data.aggregate.totalCostYen)} 円`,
-            }),
-            el("span", {
-              text: `USD建て ${formatSignedUsd(valuation.profitUsd)} USD（${formatSignedPct(valuation.rateUsdPct)}）`,
-            }),
-          ]),
         ])
       );
+
+      /*
+        評価額・取得総額・USD建ての3つはここから外した。
+        カードが答えるべき問いは「いま、いくらか」と「±0 まであとどれくらいか」の2つで、
+        3つとも別の場所に同じものがあるか、その場で導ける:
+          取得総額 … 「取得の内訳」に同じものが出ている
+          評価額   … 取得総額 ＋ 上の損益。しかも株価が未入力なら仮の値なので、
+                     注記から離して単独で置くと誤解のもとになる
+          USD建て  … 初期状態では検討中の条件（＝現在地）のパネルに同じ数字が出る。
+                     円建てと符号が食い違うときだけは意味を持つので、
+                     その場合は下の1行（divergence）で言葉にして伝える
+      */
 
       if (divergence) {
         container.append(
@@ -103,23 +106,37 @@ export function createCurrentPosition({
       // 同じ種類の情報を2つの書式で出すと、見比べるときに読み替えが要る
       breakEvenContainer.append(
         el("div", { class: "breakeven-callout" }, [
+          // 2つの数字は「どちらか片方でも」成り立てば ±0 になる条件。
+          // 見出しがそれを言わないと、2つ揃って必要な条件に読める
           el("span", {
             class: "summary-stat-label d-block",
             text: breakEven.inProfit
-              ? "ここまで下がると ±0"
-              : "ここまで戻ると ±0",
+              ? "株価か為替が ここまで下がると ±0"
+              : "株価か為替が ここまで戻ると ±0",
           }),
-          el("span", { class: "breakeven-value" }, [
-            `株価 $${formatUsd(breakEven.breakEvenPrice)}（${formatSignedPct(breakEven.pricePct)}）`,
-            el("span", {
-              class: "d-block",
-              text: `為替 ${formatNumber(breakEven.breakEvenFx, 2)} 円/USD（${formatSignedPct(breakEven.fxPct)}）`,
-            }),
+          el("dl", { class: "breakeven-value stat-rows mb-0" }, [
+            statRow(
+              "株価",
+              `$${formatUsd(breakEven.breakEvenPrice)}（${formatSignedPct(breakEven.pricePct)}）`
+            ),
+            statRow(
+              "為替",
+              `${formatNumber(breakEven.breakEvenFx, 2)} 円/USD（${formatSignedPct(breakEven.fxPct)}）`
+            ),
           ]),
         ])
       );
     },
   };
+}
+
+/**
+ * ラベルと値の1行。dl の2列グリッドに流し込む前提で、要素の配列を返す。
+ * @param {string} label
+ * @param {string} value
+ */
+function statRow(label, value) {
+  return [el("dt", { text: label }), el("dd", { text: value })];
 }
 
 /** 入力欄に入れる値。末尾の余分な 0 を落として編集しやすくする */

@@ -504,13 +504,16 @@ kbd {
 }
 
 @media (min-width: 992px) {
+  /*
+    結論・±0 になる水準・内訳を横に並べる。
+    カードの右半分が空いているのに縦に積むと、高さだけが伸びてグラフを押し下げる。
+    justify-content: start で、余った幅は列の間ではなくカードの余白側へ送る。
+  */
   .current-grid {
-    grid-template-columns: minmax(230px, 1fr) minmax(220px, auto) minmax(
-        240px,
-        1fr
-      );
+    grid-template-columns: minmax(12rem, auto) minmax(15rem, auto);
+    justify-content: start;
     align-items: start;
-    column-gap: 1.5rem;
+    column-gap: 1.75rem;
   }
 }
 
@@ -534,41 +537,69 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-/* 主役の数字が仮の値から出ていることの断り。数字の直下に置く */
+/*
+  主役の数字が仮の値から出ていることの断り。数字の直下に置く。
+  塗りと枠を持たせると、初期状態で必ず出る注記がエラーに見えるうえ、
+  すぐ隣の「±0 になる水準」と囲みの語彙が2種類並ぶ。
+  色（このカードで他に使っていない）と位置だけで足りる。
+*/
 .current-placeholder {
-  margin-top: 0.4rem;
-  padding: 0.35rem 0.55rem;
-  border-left: 3px solid var(--bs-warning);
-  border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
-  background-color: var(--bs-warning-bg-subtle);
+  margin-top: 0.35rem;
   color: var(--bs-warning-text-emphasis);
   font-size: 0.8rem;
 }
 
 .current-sub {
-  margin-top: 0.35rem;
   font-size: 0.85rem;
   color: var(--bs-secondary-color);
 }
 
-/* 文の途中で折り返さないよう、項目ごとに行を分ける */
-.current-sub > span {
-  display: block;
+/*
+  ラベルと値を別の列に置き、値の先頭を揃える。
+  「評価額 245,520 円」のように1行の文にすると、ラベルの長さの違いがそのまま
+  桁の位置のずれになり、上下の数字を見比べられない。
+*/
+.stat-rows {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.6rem;
+  row-gap: 0.1rem;
+  margin: 0;
 }
 
+.stat-rows dt {
+  font-weight: inherit;
+}
+
+.stat-rows dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+  囲みも縦帯も持たせない。
+
+  青い帯はどの意味も担っていなかった。このアプリでは色に役割を割り当てて
+  （無彩色＝事実、紫＝操作する点、赤青＝損益）いるので、意味のない色が1つ増えると
+  その分だけ規則が弱くなる。しかも同じ青は表示範囲スライダーで使っている。
+
+  塗りと余白をやめると、隣の数字の列と背丈もほぼ揃う。囲みは縁の位置を
+  見比べさせるが、囲まない文字の塊どうしなら多少の長短は気にならない。
+*/
 .breakeven-callout {
-  padding: 0.6rem 0.85rem;
-  border-left: 3px solid var(--bs-primary);
-  border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
-  background-color: var(--bs-tertiary-bg);
+  padding: 0;
 }
 
 .breakeven-value {
-  display: block;
-  margin-top: 0.1rem;
+  margin-top: 0.25rem;
   font-size: 0.95rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+}
+
+/* ラベルは値より一段弱く。並んだ数字のほうを先に読ませる */
+.breakeven-value dt {
+  color: var(--bs-secondary-color);
+  font-weight: 400;
 }
 
 /* -------------------------------------------------- 感応度・シナリオ */
