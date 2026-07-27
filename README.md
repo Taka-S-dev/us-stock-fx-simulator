@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Taka-S-dev/us-stock-fx-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/Taka-S-dev/us-stock-fx-simulator/actions)
 
-## 🔗 Live Demo
+## Live Demo
 
 **[https://us-stock-fx-simulator.vercel.app/](https://us-stock-fx-simulator.vercel.app/)**
 
