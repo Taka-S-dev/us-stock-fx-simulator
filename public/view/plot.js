@@ -614,6 +614,9 @@ const COMPACT_WIDTH = 420;
 
 export function createPlot({ node, onPick }) {
   let bound = false;
+  /** 直近に描いた内容。幅が変わって compact が切り替わったとき描き直すのに使う */
+  let lastRender = null;
+  let lastCompact = null;
   /** 直近に描いた表示範囲。ピクセル→データ変換に使う */
   let currentView = null;
   /** 直近に描いたプローブ位置。タッチで掴めるかの判定に使う */
@@ -664,7 +667,7 @@ export function createPlot({ node, onPick }) {
     locale: "ja",
   };
 
-  return {
+  const api = {
     /**
      * @param {ReturnType<typeof import("../model/calc.js").calculateGraphData>} graph
      * @param {{fxMin:number,fxMax:number,priceMin:number,priceMax:number}} view
@@ -679,7 +682,9 @@ export function createPlot({ node, onPick }) {
         サイドバーの有無や拡大率でも描画域は変わるので、
         「この要素が狭いかどうか」だけを見るほうが破綻しない。
       */
+      lastRender = { graph, view, themeName, options };
       const compact = node.clientWidth < COMPACT_WIDTH;
+      lastCompact = compact;
       /*
         軸に沿わせた部品の配置も compact かどうかで変える必要がある。
         判定はプロット要素の幅なので、CSS のメディアクエリ（＝画面幅）では表せない。
@@ -824,4 +829,22 @@ export function createPlot({ node, onPick }) {
       bound = false;
     },
   };
+
+  /*
+    compact の判定は描画のたびに行うが、状態が変わらないまま幅だけ変わった場合
+    （端末の回転、ウィンドウのリサイズ、開発者ツールの端末エミュレーション）は
+    描画が走らない。そのままだと、狭い画面に凡例とカラーバーを載せたまま
+    プロット領域だけが潰れた状態が残る。
+
+    判定が切り替わったときだけ描き直す。Plotly 自身の再描画でもこの監視は
+    発火するが、判定が同じなら何もしないので描画のループにはならない。
+  */
+  new ResizeObserver(() => {
+    if (!lastRender) return;
+    if (node.clientWidth < COMPACT_WIDTH === lastCompact) return;
+    const { graph, view, themeName, options } = lastRender;
+    api.render(graph, view, themeName, options);
+  }).observe(node);
+
+  return api;
 }
