@@ -1,6 +1,6 @@
 // view/purchaseList.js
-// 購入履歴の入力行。アプリ内でこの行のマークアップを定義しているのはここだけ
-// （旧実装はPC用・モーダル用・復元用で7箇所に同じHTMLが複製されていた）。
+// 購入履歴の入力行。アプリ内でこの行のマークアップを定義しているのはここだけで、
+// PC 用・モーダル用・復元用に同じ HTML を複製しない。
 
 import { LIMITS } from "../model/purchase.js";
 import { el, clear, syncValue } from "./dom.js";

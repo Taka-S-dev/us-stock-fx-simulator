@@ -11,9 +11,9 @@ import {
 import { clear, el } from "./dom.js";
 
 /*
-  列数は .stat-grid が実際の幅から決める。
-  以前は col-lg-3 と画面幅で4列に固定していたため、カードが狭くなると
-  「24,555.00 円/株」が数字の途中で改行していた。
+  列数は .stat-grid が実際の幅から決める。col-lg-3 のように画面幅で
+  列数を決めると、カードが狭いときに「24,555.00 円/株」が
+  数字の途中で改行する。
 */
 const stat = (label, value, unit) =>
   el("div", { class: "summary-stat" }, [

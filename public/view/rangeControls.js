@@ -4,7 +4,7 @@
 // 現在の範囲は軸の目盛りが示すので、ここでは数値の読み上げ用の要素を持たない。
 // 状態 → UI は render() の一方向、UI → 状態は onChange の一方向。
 // noUiSlider の 'slide' / 'change' はユーザー操作のときだけ発火し、プログラムからの
-// set() では発火しないので、旧実装の isUpdating フラグや setTimeout が不要になる。
+// set() では発火しないので、再入を防ぐフラグや setTimeout を挟む必要がない。
 
 import { RANGE_LIMITS, scalePercent } from "../model/purchase.js";
 import { clear, el, need } from "./dom.js";

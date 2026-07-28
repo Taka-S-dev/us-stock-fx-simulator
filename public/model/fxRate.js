@@ -11,7 +11,7 @@ export const CACHE_TTL_MS = 60 * 60 * 1000;
 
 /**
  * USD/JPY を取得する。
- * - タイムアウトを必ず付ける（旧実装は無応答時にローディングのまま固まった）
+ * - タイムアウトを必ず付ける（無応答のときにローディング表示のまま固まらないように）
  * - 失敗理由は throw ではなく戻り値で返し、呼び出し側の分岐を単純にする
  *
  * @param {{ fetchImpl?: typeof fetch, timeoutMs?: number }} [options]

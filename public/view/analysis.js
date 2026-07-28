@@ -24,9 +24,9 @@ const DOMINANT_NOTE = {
  */
 export function createSensitivityPanel({ container }) {
   /*
-    列数は .stat-grid が実際の幅から決める。
-    以前は col-sm-4 と画面幅で3列に固定していたため、カードが狭くなると
-    値が途中で改行していた（高さ揃えの h-100 も grid では不要）。
+    列数は .stat-grid が実際の幅から決める。col-sm-4 のように画面幅で
+    列数を決めると、カードが狭いときに列が多すぎて値が途中で改行する。
+    高さ揃えの h-100 も grid では要らない。
   */
   const item = (label, value, note) =>
     el("div", { class: "summary-stat" }, [

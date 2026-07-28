@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <!-- ピンチズームを禁止しない（WCAG 1.4.4）。旧実装の user-scalable=no は削除済み -->
+    <!-- ピンチズームを禁止しない（WCAG 1.4.4）。user-scalable=no は付けない -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>損益分岐シミュレーター（米国株 × 為替）</title>
@@ -685,9 +685,9 @@
 
     <!--
       アプリの説明と免責事項。
-      以前はページ最下部のアコーディオンにあり、長いページを最後まで
-      スクロールしないと到達できなかった。投資ツールとして免責事項は
-      見つけられる場所に置く必要があるため、ヘッダーとフッターの両方から開く。
+      投資ツールとして免責事項は見つけられる場所に置く必要があるため、
+      ヘッダーとフッターの両方から開く。ページ最下部に畳んで置くと、
+      長いページを最後までスクロールしないと到達できない。
     -->
     <div
       class="modal fade"

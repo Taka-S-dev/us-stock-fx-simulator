@@ -314,9 +314,9 @@ export function buildFigure(
   /*
     売却条件（プローブ）。すべて trace として描く。
 
-    以前は「掴む輪」を editable な shape にして Plotly にドラッグさせていたが、
+    「掴む輪」を editable な shape にして Plotly に任せることはしない。
     Plotly のシェイプ編集は移動とリサイズを分離できず、輪の縁を掴むと
-    リサイズ扱いになって円が楕円に潰れてしまう（28px の輪はほぼ全体が縁）。
+    リサイズ扱いになって円が楕円に潰れる（28px の輪はほぼ全体が縁）。
     ドラッグは自前で処理しているので、shape を持つ必要がない。
   */
   if (probe && inView(probe, view)) {
@@ -677,8 +677,8 @@ export function createPlot({ node, onPick }) {
    * ポインタ／タッチ座標をグラフの座標へ変換する。
    *
    * プロット領域の矩形は Plotly が置く .nsewdrag（ドラッグ受け）から取る。
-   * 余白を自前で計算していた旧実装と違い、実際の描画結果を読むので
-   * レイアウト変更やレスポンシブでずれない。
+   * 余白を自前で計算せず実際の描画結果を読むので、レイアウト変更や
+   * レスポンシブでずれない。
    * 軸の範囲は fixedrange で固定しており、こちら（state）が持つ値と一致する。
    */
   function toDataPoint(event) {

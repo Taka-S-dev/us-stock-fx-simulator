@@ -255,8 +255,8 @@ export function breakEvenPriceUsd(agg) {
 /**
  * 損益グリッド。z[priceIndex][fxIndex] の2次元配列（Plotlyのz形式に合わせる）。
  *
- * 損益率は z から一次変換で求まるだけなので配列化しない（旧実装は同サイズの
- * 文字列配列を2枚持っていて、再描画ごとに数万個の文字列を生成していた）。
+ * 損益率は z から一次変換で求まるだけなので配列化しない。同サイズの文字列配列を
+ * 別に持つと、再描画のたびに数万個の文字列を作ることになる。
  *
  * @param {ReturnType<typeof aggregatePurchases>} agg
  * @param {{fxMin:number, fxMax:number, priceMin:number, priceMax:number}} view
