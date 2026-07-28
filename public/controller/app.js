@@ -117,6 +117,7 @@ export function startApp() {
     fxInput: need("#current-fx-input"),
     priceInput: need("#current-price-input"),
     autoNote: need("#current-auto-note"),
+    onRequestPrice: focusCurrentPrice,
   });
   const sensitivityPanel = createSensitivityPanel({
     container: need("#sensitivity-panel"),
@@ -421,6 +422,40 @@ export function startApp() {
     url.searchParams.set("url", location.href);
     window.open(url.toString(), "_blank", "noopener");
   });
+
+  /*
+    現在の株価の入力欄へ案内する。
+    幅の狭い画面では入力欄が引き出し（offcanvas）の中にあるので、
+    開いてから焦点を当てる。開いている画面ではその場で焦点を当てるだけ。
+  */
+  function focusCurrentPrice() {
+    const input = /** @type {HTMLInputElement} */ (
+      need("#current-price-input")
+    );
+    const panel = need("#panel-current");
+    // 折り畳まれていることもあるので開いておく
+    bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
+
+    const focus = () => {
+      input.focus();
+      input.select();
+    };
+
+    /*
+      閉じている引き出しは display:none ではなく visibility:hidden で隠れている
+      （画面外へずらしたうえで不可視にする作り）。
+      offsetParent や矩形の有無では「閉じている」を判定できない。
+    */
+    const controls = need("#controls");
+    if (getComputedStyle(controls).visibility === "hidden") {
+      controls.addEventListener("shown.bs.offcanvas", focus, { once: true });
+      bootstrap.Offcanvas.getOrCreateInstance(controls).show();
+      return;
+    }
+
+    input.scrollIntoView({ block: "center", behavior: "smooth" });
+    focus();
+  }
 
   function renderThemeToggle() {
     const button = need("#theme-toggle");

@@ -19,6 +19,7 @@ import { clear, el, syncValue } from "./dom.js";
  * @param {HTMLInputElement} options.fxInput
  * @param {HTMLInputElement} options.priceInput
  * @param {HTMLElement} options.autoNote 自動追従中の補足表示
+ * @param {() => void} options.onRequestPrice 株価の入力欄へ案内する
  */
 export function createCurrentPosition({
   container,
@@ -26,6 +27,7 @@ export function createCurrentPosition({
   fxInput,
   priceInput,
   autoNote,
+  onRequestPrice,
 }) {
   return {
     /** @param {ReturnType<typeof import("../model/selectors.js").selectCurrentValuation>} data */
@@ -75,6 +77,17 @@ export function createCurrentPosition({
               "株価が未入力のため、",
               el("strong", { text: "為替の影響だけ" }),
               "を表しています",
+              /*
+                入れる場所への行き方も持たせる。
+                幅の狭い画面では入力欄が引き出しの中にあり、
+                「未入力です」とだけ言われても、どこで直すのか分からない。
+              */
+              el("button", {
+                type: "button",
+                class: "btn btn-link btn-sm align-baseline p-0 ms-2",
+                text: "株価を入力",
+                onClick: onRequestPrice,
+              }),
             ]),
         ])
       );
