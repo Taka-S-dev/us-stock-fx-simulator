@@ -6,8 +6,6 @@
 
 :root {
   --app-plot-height: clamp(320px, 58vh, 620px);
-  /* 追従するヘッダーの高さ。sticky の位置合わせに使う */
-  --app-header-height: 52px;
 
   /*
     グラフ上のマーカーと入力欄を対応づけるための色。
@@ -20,6 +18,12 @@
 
   /* カードを浮かせるための地の色。ヘッダーもこれに合わせる */
   --app-page-bg: #eef0f4;
+
+  /*
+    カードの輪郭。沈めた地に対して 1.5 前後の比が出る濃さを、
+    ライト・ダークそれぞれで明示する（Bootstrap の既定では足りない。理由は .card 側）。
+  */
+  --app-card-border: #d3d9e0;
 }
 
 :root[data-bs-theme="dark"] {
@@ -27,6 +31,7 @@
   --app-color-probe: #b197fc;
   --app-color-probe-bg: rgb(177 151 252 / 8%);
   --app-page-bg: #16191d;
+  --app-card-border: #343a40;
 }
 
 /*
@@ -50,12 +55,12 @@ body {
     枠線は既定 (#dee2e6) だと沈めた地との比が 1.14 しかなく輪郭にならないため、
     ダーク側と同じくらい（1.5 前後）読み取れる濃さにする。
   */
-  border-color: #d3d9e0;
+  border-color: var(--app-card-border);
   box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }
 
+/* ダークでは地との明度差だけで面が立つので、影は重ねない */
 :root[data-bs-theme="dark"] .card {
-  border-color: #343a40;
   box-shadow: none;
 }
 
@@ -156,9 +161,20 @@ body {
   background-color: var(--bs-tertiary-bg);
 }
 
+/*
+  購入1件ぶんの見出し。
+  Bootstrap の reboot は legend を float: left / 大きめのフォントにするので、
+  ラベルとして使う legend では打ち消しておく。
+  大きさは同じ枠の中の .form-label と揃える。
+*/
 .purchase-legend {
+  float: none;
+  width: auto;
   margin-bottom: 0;
+  padding: 0;
+  font-size: 0.8rem;
   font-weight: 600;
+  line-height: inherit;
   color: var(--bs-secondary-color);
 }
 
@@ -244,18 +260,6 @@ kbd {
 }
 
 /* -------------------------------------------------- 表示範囲 */
-
-/*
-  Bootstrap の reboot は legend を float: left / 大きめのフォントにするので、
-  ラベルとして使う legend では打ち消しておく
-*/
-.purchase-legend {
-  float: none;
-  width: auto;
-  padding: 0;
-  font-size: 0.8rem;
-  line-height: inherit;
-}
 
 /*
   グラフと軸スライダーの配置。
@@ -823,8 +827,7 @@ kbd {
   border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
 }
 
-.summary-stat,
-.cursor-stat {
+.summary-stat {
   height: 100%;
   padding: 0.5rem 0.6rem;
   border-radius: var(--bs-border-radius);
