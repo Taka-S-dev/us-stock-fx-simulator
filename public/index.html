@@ -10,6 +10,13 @@
       name="description"
       content="複数回に分けて購入した米国株について、売却時の株価と為替レートの組み合わせごとの損益を可視化するシミュレーターです。"
     />
+    <!--
+      追従ヘッダーはページの地の色なので、モバイルのブラウザ UI もそこに揃える。
+      data-bs-theme に追従させる必要があるため、実際の値は view/theme.js が
+      --app-page-bg から読んで書き換える（ここにあるのは初回描画ぶん）。
+    -->
+    <meta name="theme-color" content="#eef0f4" />
+
     <meta property="og:title" content="損益分岐シミュレーター（米国株 × 為替）" />
     <meta
       property="og:description"

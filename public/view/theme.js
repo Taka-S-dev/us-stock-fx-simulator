@@ -5,6 +5,23 @@ const ORDER = /** @type {const} */ (["auto", "light", "dark"]);
 const LABEL = { auto: "OSに合わせる", light: "ライト", dark: "ダーク" };
 const ICON = { auto: "◐", light: "☀", dark: "☾" };
 
+/*
+  モバイルのブラウザ UI（アドレスバーなど）の色。
+  追従ヘッダーはページの地の色なので、揃えないと画面の上端だけ別の色で切れる。
+
+  値は CSS の --app-page-bg をそのまま読む。ここに色を書くと、
+  styles.css 側だけ変えたときに片方が取り残される。
+*/
+function syncThemeColor() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+
+  const pageBg = getComputedStyle(document.documentElement)
+    .getPropertyValue("--app-page-bg")
+    .trim();
+  if (pageBg) meta.setAttribute("content", pageBg);
+}
+
 /**
  * @param {{ getTheme: () => "auto"|"light"|"dark", setTheme: (t:string) => void }} preferences
  */
@@ -20,6 +37,8 @@ export function createTheme(preferences) {
   const apply = () => {
     const value = effective();
     document.documentElement.dataset.bsTheme = value;
+    // --app-page-bg は data-bs-theme で切り替わるので、必ず適用後に読む
+    syncThemeColor();
     for (const listener of listeners) listener(value);
   };
 
