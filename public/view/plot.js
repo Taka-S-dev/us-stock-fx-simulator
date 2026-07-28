@@ -648,6 +648,12 @@ export function createPlot({ node, onPick }) {
   /** 直近に描いた内容。幅が変わって compact が切り替わったとき描き直すのに使う */
   let lastRender = null;
   let lastCompact = null;
+  /** 寸法を合わせ直したあとに再計測したい購読者（軸に沿わせたスライダー） */
+  /** @type {Set<() => void>} */
+  const resizeListeners = new Set();
+  const notifyResize = () => {
+    for (const listener of resizeListeners) listener();
+  };
   /** 直近に描いた表示範囲。ピクセル→データ変換に使う */
   let currentView = null;
   /** 直近に描いたプローブ位置。タッチで掴めるかの判定に使う */
@@ -847,11 +853,16 @@ export function createPlot({ node, onPick }) {
       };
     },
 
-    /** 描画サイズの変化を通知する（レスポンシブ時の再計測用） */
+    /*
+      描画サイズの変化を通知する（レスポンシブ時の再計測用）。
+
+      通知は下の監視が、Plotly に寸法を合わせ直させてから行う。
+      要素が変わった時点で呼ぶと、購読者（軸に沿わせたスライダー）は
+      まだ古い寸法の .nsewdrag を測ることになる。
+    */
     onResize(listener) {
-      const observer = new ResizeObserver(() => listener());
-      observer.observe(node);
-      return () => observer.disconnect();
+      resizeListeners.add(listener);
+      return () => resizeListeners.delete(listener);
     },
 
     /** グラフを破棄する（ページ遷移のない構成なので通常は使わない） */
@@ -862,19 +873,28 @@ export function createPlot({ node, onPick }) {
   };
 
   /*
-    compact の判定は描画のたびに行うが、状態が変わらないまま幅だけ変わった場合
-    （端末の回転、ウィンドウのリサイズ、開発者ツールの端末エミュレーション）は
-    描画が走らない。そのままだと、狭い画面に凡例とカラーバーを載せたまま
-    プロット領域だけが潰れた状態が残る。
+    描画域の幅が変わったときの追従。
 
-    判定が切り替わったときだけ描き直す。Plotly 自身の再描画でもこの監視は
-    発火するが、判定が同じなら何もしないので描画のループにはならない。
+    compact の判定が変わるときは、凡例やカラーバーの有無ごと変わるので描き直す。
+
+    判定が変わらないときも、寸法は合わせ直さないといけない。Plotly が自分で
+    合わせにいくのは window の resize だけで、窓は動かさず容れ物だけが変わった場合
+    （パネルの幅変更、サイドバーの開閉、スクロールバーの出入り）は古い寸法のまま
+    残り、描画がカードからはみ出す。軸に沿わせたスライダーは .nsewdrag を
+    実測して長さを決めているので、同じ分だけ一緒にはみ出していた。
+
+    どちらも node 自身の大きさは変えないので、この監視が再び発火することはない。
   */
   new ResizeObserver(() => {
     if (!lastRender) return;
-    if (node.clientWidth < COMPACT_WIDTH === lastCompact) return;
-    const { graph, view, themeName, options } = lastRender;
-    api.render(graph, view, themeName, options);
+
+    if (node.clientWidth < COMPACT_WIDTH !== lastCompact) {
+      const { graph, view, themeName, options } = lastRender;
+      api.render(graph, view, themeName, options).then(notifyResize);
+      return;
+    }
+
+    Plotly.Plots.resize(node).then(notifyResize);
   }).observe(node);
 
   return api;
