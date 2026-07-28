@@ -260,16 +260,20 @@ kbd {
   min-width: 0;
 }
 
+/*
+  目盛り(1.3rem) + トラック + ハンドルのはみ出し。
+  ハンドルは 22px あり、これ以上細くすると掴む的が
+  WCAG 2.5.8 の目安（24×24px）からさらに離れるので、ここが下限。
+*/
 .graph-axis-y {
   position: relative;
   flex: 0 0 auto;
-  /* 目盛り(1.5rem) + トラック + 余白 */
-  width: 2.9rem;
+  width: 2.5rem;
 }
 
 .graph-axis-y #price-slider {
   position: absolute;
-  left: 1.9rem;
+  left: 1.6rem;
   top: var(--plot-top, 0px);
   height: var(--plot-height, 100%);
   margin: 0;
@@ -334,10 +338,10 @@ kbd {
 
 @media (max-width: 575.98px) {
   .graph-axis-y {
-    width: 2.6rem;
+    width: 2.3rem;
   }
   .graph-axis-y #price-slider {
-    left: 1.7rem;
+    left: 1.45rem;
   }
   .noUi-pips-vertical {
     width: 1.7rem;
@@ -412,16 +416,16 @@ kbd {
 .noUi-pips-vertical {
   left: auto;
   right: 100%;
-  width: 1.5rem;
+  width: 1.3rem;
   height: 100%;
-  padding: 0 0.4rem 0 0;
-  font-size: 0.65rem;
+  padding: 0 0.25rem 0 0;
+  font-size: 0.6rem;
   color: var(--bs-secondary-color);
 }
 
 .noUi-value-vertical {
   left: auto;
-  right: 0.4rem;
+  right: 0.25rem;
   transform: translate(0, -50%);
   padding-left: 0;
   white-space: nowrap;

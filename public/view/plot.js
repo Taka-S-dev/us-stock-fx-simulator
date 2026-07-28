@@ -196,13 +196,26 @@ export function buildFigure(
         狭い画面では帯をやめて、その幅をプロット領域に回す。
       */
       showscale: !compact,
+      /*
+        縦帯を右に置くと幅を 75px 使う（プロット領域の12%）。
+        グラフは横長なので、横向きにして上の帯（凡例の右隣）へ移す。
+        凡例が1行に収まるようになったため、この帯に同居させても高さは増えない。
+      */
       colorbar: {
-        title: { text: "損益（円）", font: { size: size(11) } },
+        orientation: "h",
+        // 題は帯の右隣。上に置くと帯だけで2行分の高さになる
+        title: { text: "損益（円）", side: "right", font: { size: size(10) } },
         tickformat: ",.3~s",
-        tickfont: { size: size(10) },
-        thickness: size(10),
-        len: 0.6,
+        tickfont: { size: size(9) },
+        thickness: size(8),
+        len: 0.3,
+        x: 0,
+        xanchor: "left",
+        // 凡例（y=1.01）の上。同じ行に並べると、目盛りの数字が凡例の文字に重なる
+        y: 1.13,
+        yanchor: "bottom",
         outlinewidth: 0,
+        ticklen: size(3),
       },
     },
     {
@@ -569,7 +582,7 @@ export function buildFigure(
       ? { l: 78, r: 20, t: 90, b: 68 }
       : compact
         ? { l: 48, r: 8, t: 10, b: 46 }
-        : { l: 52, r: 12, t: 34, b: 52 },
+        : { l: 52, r: 12, t: 74, b: 52 },
     xaxis: {
       ...axis,
       title: { text: "為替レート（円/USD）", font: { size: size(12) } },
@@ -595,7 +608,8 @@ export function buildFigure(
       y: 1.01,
       x: 0,
       // 6項目あるので、収まらないと Plotly が1項目ずつ折り返して行数だけ増える。
-      // 文字と項目間の余白を詰めて、実用的な幅で2行に収まるようにする
+      // 文字と項目間の余白を詰めて、実用的な幅で2行に収まるようにする。
+      // 右端はカラーバーが使うので、こちらは左から詰める
       font: { size: size(10) },
       itemsizing: "constant",
       itemwidth: 30,
