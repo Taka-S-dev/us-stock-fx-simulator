@@ -67,20 +67,16 @@ export function createPurchaseList({
       inputs[field] = input;
       feedback[field] = error;
 
-      // ラベルの行数が違っても入力欄の高さが揃うよう、下端で揃える（col の align-self）
-      return el(
-        "div",
-        { class: "col-6 d-flex flex-column justify-content-end" },
-        [
-          el("label", { class: "form-label", for: inputId, text: spec.label }),
-          el("div", { class: "input-group input-group-sm number-stepper" }, [
-            stepButton(inputId, -1, spec.label),
-            input,
-            stepButton(inputId, 1, spec.label),
-            error,
-          ]),
-        ]
-      );
+      // ラベルの行数が違っても入力欄の高さが揃うよう、下端で揃える
+      return el("div", { class: "d-flex flex-column justify-content-end" }, [
+        el("label", { class: "form-label", for: inputId, text: spec.label }),
+        el("div", { class: "input-group input-group-sm number-stepper" }, [
+          stepButton(inputId, -1, spec.label),
+          input,
+          stepButton(inputId, 1, spec.label),
+          error,
+        ]),
+      ]);
     });
 
     const legend = el("legend", { class: "purchase-legend" });
@@ -100,7 +96,7 @@ export function createPurchaseList({
         { class: "d-flex justify-content-between align-items-center" },
         [legend, removeButton]
       ),
-      el("div", { class: "row g-2" }, fieldNodes),
+      el("div", { class: "field-grid" }, fieldNodes),
     ]);
 
     return { root, inputs, feedback, legend, removeButton };

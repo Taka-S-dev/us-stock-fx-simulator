@@ -23,13 +23,16 @@ const DOMINANT_NOTE = {
  * @param {HTMLElement} options.container
  */
 export function createSensitivityPanel({ container }) {
+  /*
+    列数は .stat-grid が実際の幅から決める。
+    以前は col-sm-4 と画面幅で3列に固定していたため、カードが狭くなると
+    値が途中で改行していた（高さ揃えの h-100 も grid では不要）。
+  */
   const item = (label, value, note) =>
-    el("div", { class: "col-12 col-sm-4" }, [
-      el("div", { class: "summary-stat h-100" }, [
-        el("dt", { class: "summary-stat-label", text: label }),
-        el("dd", { class: "summary-stat-value mb-0", text: value }),
-        note && el("p", { class: "sensitivity-note mb-0", text: note }),
-      ]),
+    el("div", { class: "summary-stat" }, [
+      el("dt", { class: "summary-stat-label", text: label }),
+      el("dd", { class: "summary-stat-value mb-0", text: value }),
+      note && el("p", { class: "sensitivity-note mb-0", text: note }),
     ]);
 
   return {
@@ -39,7 +42,7 @@ export function createSensitivityPanel({ container }) {
       if (!sensitivity) return;
 
       container.append(
-        el("dl", { class: "row g-2 mb-2" }, [
+        el("dl", { class: "stat-grid mb-2" }, [
           item(
             "為替が 1 円動くと",
             `${formatSignedYen(sensitivity.perYen)} 円`,

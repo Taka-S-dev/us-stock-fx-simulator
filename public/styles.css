@@ -827,6 +827,33 @@ kbd {
   border-radius: 0 var(--bs-border-radius) var(--bs-border-radius) 0;
 }
 
+/*
+  数字タイルの並び。列数は画面幅ではなく、置かれた場所の幅で決める。
+
+  以前は Bootstrap の col-sm-4 / col-lg-3 を使っていたが、これは画面幅を見るので、
+  カードを横に3枚並べた途端に列数が過剰になり、「24,555.00 円/株」が
+  数字の途中で改行していた。auto-fit なら実際に使える幅から列数が決まる。
+*/
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+/*
+  入力欄の並び。こちらも列数は置かれた場所の幅から決める。
+
+  以前は col-6 で常に2列に割っていた。サイドバーの内側は 768〜1199px では
+  240px ほどしかなく、増減ボタン2つ（60px）を引くと入力欄が 40px まで潰れて、
+  「150」が「15(」に切れて読めなくなっていた。
+  1列に落ちれば値は最後まで見える。幅がある画面では今までどおり2列に戻る。
+*/
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+}
+
 .summary-stat {
   height: 100%;
   padding: 0.5rem 0.6rem;

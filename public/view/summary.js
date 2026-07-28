@@ -10,14 +10,17 @@ import {
 } from "../utils/format.js";
 import { clear, el } from "./dom.js";
 
+/*
+  列数は .stat-grid が実際の幅から決める。
+  以前は col-lg-3 と画面幅で4列に固定していたため、カードが狭くなると
+  「24,555.00 円/株」が数字の途中で改行していた。
+*/
 const stat = (label, value, unit) =>
-  el("div", { class: "col-6 col-lg-3" }, [
-    el("div", { class: "summary-stat" }, [
-      el("dt", { class: "summary-stat-label", text: label }),
-      el("dd", { class: "summary-stat-value mb-0" }, [
-        el("span", { text: value }),
-        unit && el("span", { class: "summary-stat-extra", text: unit }),
-      ]),
+  el("div", { class: "summary-stat" }, [
+    el("dt", { class: "summary-stat-label", text: label }),
+    el("dd", { class: "summary-stat-value mb-0" }, [
+      el("span", { text: value }),
+      unit && el("span", { class: "summary-stat-extra", text: unit }),
     ]),
   ]);
 
@@ -35,7 +38,7 @@ export function createSummary({ container }) {
       const { aggregate } = summary;
 
       container.append(
-        el("dl", { class: "row g-2 mb-2" }, [
+        el("dl", { class: "stat-grid mb-2" }, [
           stat("合計株数", formatCount(aggregate.totalQty), " 株"),
           stat("取得総額", formatYen(aggregate.totalCostYen), " 円"),
           stat("平均取得価額", formatNumber(aggregate.avgAcqYen, 2), " 円/株"),
