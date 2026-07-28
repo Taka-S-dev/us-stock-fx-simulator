@@ -419,8 +419,14 @@
                     >
                       画像を保存
                     </button>
+                    <!--
+                      𝕏 は U+1D54F（数学用の飾り文字）で、読み上げ環境によっては
+                      「数学記号の X」と読まれるか、そのまま無視される。
+                      見た目はロゴのまま、読み上げには素の X を渡す。
+                    -->
                     <button id="btn-share-x" type="button" class="btn btn-outline-secondary btn-sm">
-                      𝕏 に投稿
+                      <span aria-hidden="true">𝕏</span><span class="visually-hidden">X</span>
+                      に投稿
                     </button>
                   </div>
                 </div>
@@ -582,27 +588,36 @@
                       操作は入力欄と同じ高さ・同じ行に並ぶため、離さないと
                       「4つ目・5つ目の入力欄」に見える。右端に寄せて間を空ける。
                     -->
-                    <div class="col-12 col-md-6 d-flex flex-wrap gap-2 justify-content-md-end">
-                      <button
-                        id="btn-reset-probe"
-                        type="button"
-                        class="btn btn-outline-secondary btn-sm"
-                      >
-                        現在地に戻す
-                      </button>
+                    <div class="col-12 col-xl-6">
+                      <div class="d-flex flex-wrap gap-2 justify-content-xl-end">
+                        <button
+                          id="btn-reset-probe"
+                          type="button"
+                          class="btn btn-outline-secondary btn-sm"
+                        >
+                          現在地に戻す
+                        </button>
+                        <!--
+                          「留めると何が起きるか」はボタン自身が持つ。
+                          サイドバーの畳まれたパネルで説明しても、
+                          読む場所と押す場所が離れていて結びつかない。
+                        -->
+                        <button
+                          id="btn-pin-probe"
+                          type="button"
+                          class="btn btn-outline-primary btn-sm"
+                          aria-describedby="pin-probe-help"
+                        >
+                          この条件をピンで留める
+                        </button>
+                      </div>
                       <!--
-                        「留めると何が起きるか」はボタン自身が持つ。
-                        サイドバーの畳まれたパネルで説明しても、
-                        読む場所と押す場所が離れていて結びつかない。
+                        以前この一文は title 属性にしかなく、タッチとキーボードからは
+                        読む手段が無かった。押す場所のすぐ下に、見える文として置く。
                       -->
-                      <button
-                        id="btn-pin-probe"
-                        type="button"
-                        class="btn btn-outline-primary btn-sm"
-                        title="留めた条件は「売却候補ピン」に残り、グラフ上にも損益つきで表示されます"
-                      >
-                        この条件をピンで留める
-                      </button>
+                      <p id="pin-probe-help" class="form-text mb-0 text-xl-end">
+                        留めた条件は「売却候補ピン」とグラフに残ります。
+                      </p>
                     </div>
                   </div>
 
