@@ -6,6 +6,8 @@
 
 **[https://us-stock-fx-simulator.vercel.app/](https://us-stock-fx-simulator.vercel.app/)**
 
+[![損益分岐シミュレーター。株価と為替の2軸に広がる損益の等高線を、損益 ±0 の線が横切っている](public/og.png)](https://us-stock-fx-simulator.vercel.app/)
+
 ## 概要
 
 米国株を購入した際の **株価 × 為替** の組み合わせに対し、
