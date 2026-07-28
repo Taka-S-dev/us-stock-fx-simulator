@@ -279,9 +279,15 @@ kbd {
   margin: 0;
 }
 
+/*
+  スライダーの下に、倍率ボタン1行分を確保する。
+  以前はスライダーの右隣（カラーバーが空けていた余白）に置いていたが、
+  カラーバーを上へ移し左右の余白も詰めた結果、右側に置ける場所が無くなった。
+  スライダーの幅はプロット領域に合わせる必要があるので、縮めるわけにもいかない。
+*/
 .graph-axis-x {
   position: relative;
-  height: 2.1rem;
+  height: 4rem;
 }
 
 .graph-axis-x #fx-slider {
@@ -311,29 +317,14 @@ kbd {
 }
 
 .graph-axis-x .axis-zoom {
-  top: 0.1rem;
-  left: calc(var(--plot-left, 0px) + var(--plot-width, 0px) + 0.5rem);
+  top: 2rem;
+  left: auto;
+  right: 0;
 }
 
 .graph-axis-y .axis-zoom {
   left: 0;
   top: calc(var(--plot-top, 0px) + var(--plot-height, 0px) + 0.4rem);
-}
-
-/*
-  横軸の倍率ボタンは、通常はスライダーの右隣（カラーバーの手前の余白）に置く。
-  ただしカラーバーを外した狭い描画では、プロット領域が右端まで伸びるため
-  その位置が画面の外になる。そのときだけ下の行へ落とす。
-  判定はプロット要素の幅で行うので、印（.is-compact）は view/plot.js が付ける。
-*/
-.graph-layout.is-compact .graph-axis-x {
-  height: 4rem;
-}
-
-.graph-layout.is-compact .graph-axis-x .axis-zoom {
-  top: 2rem;
-  left: auto;
-  right: 0;
 }
 
 @media (max-width: 575.98px) {
@@ -494,6 +485,16 @@ kbd {
 
 .slider-mark-pin {
   background-color: var(--app-color-probe);
+}
+
+/*
+  グラフのカードだけ左右の余白を詰める。
+  ここは中身（プロット領域）の幅がそのまま読み取りやすさになるので、
+  他のカードと揃えるより幅を優先する。上下は揃えたまま。
+*/
+.graph-card > .card-body {
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
 }
 
 /* -------------------------------------------------- グラフ */

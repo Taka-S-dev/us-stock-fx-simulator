@@ -208,12 +208,24 @@ export function buildFigure(
         tickformat: ",.3~s",
         tickfont: { size: size(9) },
         thickness: size(8),
-        len: 0.3,
+        /*
+          横向きでも len は「プロットの高さ」に対する割合になる。
+          割合のままだと縦に低い画面で帯が 112px まで縮み、
+          目盛りの数字が入りきらずに縦回転して、下の凡例に重なる。
+          帯の長さは高さと関係ないので、ピクセルで指定する。
+        */
+        lenmode: "pixels",
+        len: size(180),
         x: 0,
         xanchor: "left",
-        // 凡例（y=1.01）の上。同じ行に並べると、目盛りの数字が凡例の文字に重なる
-        y: 1.13,
-        yanchor: "bottom",
+        /*
+          位置の基準はグラフ要素そのもの（container）にする。
+          既定の paper 基準では「プロットの高さに対する割合」になるため、
+          縦に低い画面ほど凡例との間隔が詰まり、目盛りの数字が凡例に重なる。
+        */
+        yref: "container",
+        y: 1,
+        yanchor: "top",
         outlinewidth: 0,
         ticklen: size(3),
       },
@@ -582,7 +594,7 @@ export function buildFigure(
       ? { l: 78, r: 20, t: 90, b: 68 }
       : compact
         ? { l: 48, r: 8, t: 10, b: 46 }
-        : { l: 52, r: 12, t: 74, b: 52 },
+        : { l: 46, r: 6, t: 74, b: 52 },
     xaxis: {
       ...axis,
       title: { text: "為替レート（円/USD）", font: { size: size(12) } },
