@@ -263,13 +263,13 @@ kbd {
 .graph-axis-y {
   position: relative;
   flex: 0 0 auto;
-  /* 目盛り(2rem) + トラック + 余白 */
-  width: 3.4rem;
+  /* 目盛り(1.5rem) + トラック + 余白 */
+  width: 2.9rem;
 }
 
 .graph-axis-y #price-slider {
   position: absolute;
-  left: 2.4rem;
+  left: 1.9rem;
   top: var(--plot-top, 0px);
   height: var(--plot-height, 100%);
   margin: 0;
@@ -334,10 +334,10 @@ kbd {
 
 @media (max-width: 575.98px) {
   .graph-axis-y {
-    width: 2.9rem;
+    width: 2.6rem;
   }
   .graph-axis-y #price-slider {
-    left: 2.1rem;
+    left: 1.7rem;
   }
   .noUi-pips-vertical {
     width: 1.7rem;
@@ -412,7 +412,7 @@ kbd {
 .noUi-pips-vertical {
   left: auto;
   right: 100%;
-  width: 2rem;
+  width: 1.5rem;
   height: 100%;
   padding: 0 0.4rem 0 0;
   font-size: 0.65rem;

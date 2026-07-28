@@ -208,7 +208,7 @@ export function buildFigure(
     {
       type: "scatter",
       mode: "lines",
-      name: "損益分岐ライン",
+      name: "損益分岐（円建て）",
       x: graph.breakEvenPoints.map((p) => p.fx),
       y: graph.breakEvenPoints.map((p) => p.price),
       line: { color: c.breakEven, width: size(3) },
@@ -569,7 +569,7 @@ export function buildFigure(
       ? { l: 78, r: 20, t: 90, b: 68 }
       : compact
         ? { l: 48, r: 8, t: 10, b: 46 }
-        : { l: 62, r: 12, t: 34, b: 52 },
+        : { l: 52, r: 12, t: 34, b: 52 },
     xaxis: {
       ...axis,
       title: { text: "為替レート（円/USD）", font: { size: size(12) } },
@@ -594,7 +594,12 @@ export function buildFigure(
       yanchor: "bottom",
       y: 1.01,
       x: 0,
-      font: { size: size(11) },
+      // 6項目あるので、収まらないと Plotly が1項目ずつ折り返して行数だけ増える。
+      // 文字と項目間の余白を詰めて、実用的な幅で2行に収まるようにする
+      font: { size: size(10) },
+      itemsizing: "constant",
+      itemwidth: 30,
+      tracegroupgap: 0,
       bgcolor: "rgba(0,0,0,0)",
     },
     annotations,
