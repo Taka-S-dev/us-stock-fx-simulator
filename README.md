@@ -248,10 +248,16 @@ npm run test:coverage  # カバレッジ付きテスト
 npm run lint           # ESLint
 npm run format         # Prettier で整形
 npm run check          # lint + format:check + coverage（CI と同じ）
+npm run og             # 共有カードの画像 public/og.png を作り直す
 ```
 
 テストはロジック層（`public/model`, `public/utils`）を対象とし、
 CI でカバレッジのしきい値（statements 80% / branches 75%）を検証しています。
+
+`npm run og` は `tools/og-card.html` を 1200×630 で描画して `public/og.png`
+（URL を共有したときのサムネイル）を書き出します。入っている Chrome / Edge を
+ヘッドレスで呼ぶだけなので依存は増えません。見つからない場合は `CHROME_PATH`
+に実行ファイルを指定してください。文言や配色を変えるときは HTML 側を直します。
 
 ---
 

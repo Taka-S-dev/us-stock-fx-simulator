@@ -30,8 +30,9 @@ export default [
     },
   },
 
+  // Node で動くもの（テスト・設定・開発用スクリプト）
   {
-    files: ["tests/**/*.js", "*.config.js"],
+    files: ["tests/**/*.js", "*.config.js", "tools/**/*.mjs"],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: "module",
