@@ -390,7 +390,7 @@
             <!-- 現在地：入力・結論・分岐までの距離を横に並べて、グラフを画面内に残す -->
             <div class="card current-card">
               <div class="card-body">
-                <h2 id="current-heading" class="h6 mb-2">現在の含み損益</h2>
+                <h2 id="current-heading" class="section-title mb-2">現在の含み損益</h2>
 
                 <div class="current-grid">
                   <div id="current-position" aria-live="polite"></div>
@@ -403,7 +403,7 @@
             <div class="card graph-card mt-3">
               <div class="card-body">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                  <h3 class="h6 mb-0 me-auto">為替 × 株価 の損益分岐グラフ</h3>
+                  <h3 class="section-title mb-0 me-auto">為替 × 株価 の損益分岐グラフ</h3>
                   <div id="graph-actions" class="d-flex flex-wrap gap-2">
                     <button
                       id="btn-fit-view"
@@ -630,30 +630,36 @@
                 -->
               </div>
             </div>
-
-            <!-- 感応度 -->
-            <div class="card mt-3" id="sensitivity-card">
-              <div class="card-body">
-                <h3 class="h6">1単位動いたときの影響</h3>
-                <div id="sensitivity-panel"></div>
-              </div>
-            </div>
-
-            <!-- シナリオ比較 -->
-            <div class="card mt-3" id="scenario-card">
-              <div class="card-body">
-                <h3 class="h6">シナリオ比較</h3>
-                <div id="scenario-table"></div>
-              </div>
-            </div>
-
-            <div class="card mt-3">
-              <div class="card-body">
-                <h3 class="h6">取得の内訳</h3>
-                <div id="summary"></div>
-              </div>
-            </div>
           </section>
+        </div>
+      </div>
+
+      <!--
+        グラフより後に読む3つは、2カラムの外に出して全幅に並べる。
+        右カラムに積むと、短いサイドバーの下に画面の4分の1ぶんの空白が残り、
+        そのぶんページも縦に伸びていた。
+        並びは幅の要る順ではなく、読む順（影響 → 比較 → 前提）のまま。
+      -->
+      <div class="analysis-grid">
+        <div class="card" id="sensitivity-card">
+          <div class="card-body">
+            <h2 class="section-title">1単位動いたときの影響</h2>
+            <div id="sensitivity-panel"></div>
+          </div>
+        </div>
+
+        <div class="card" id="scenario-card">
+          <div class="card-body">
+            <h2 class="section-title">シナリオ比較</h2>
+            <div id="scenario-table"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h2 class="section-title">取得の内訳</h2>
+            <div id="summary"></div>
+          </div>
         </div>
       </div>
     </main>
