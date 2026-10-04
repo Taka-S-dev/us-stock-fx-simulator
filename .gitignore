@@ -1,53 +1,35 @@
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# 既定ですべて無視し、プロジェクトのパスだけ戻す
+/*
+!/.github/
+!/public/
+!/tests/
+!/tools/
+!/.gitattributes
+!/.gitignore
+!/.nvmrc
+!/.prettierrc.json
+!/CHANGELOG.md
+!/LICENSE
+!/README.md
+!/eslint.config.js
+!/package.json
+!/package-lock.json
+!/vitest.config.js
 
-# Build / tooling caches
-dist/
-build/
-.tmp/
-.temp/
-.cache/
-.vite/
-.parcel-cache/
-
-# Test artifacts
-coverage/
-.nyc_output/
-
-# Env (keep example only)
+# 許可したパスの中でも、機密・私的データは再度止める
 .env
 .env.*
-!.env.example
-
-# OS / IDE
+*.pem
+*.key
+id_rsa*
+**/secrets.*
+**/credentials.*
 .DS_Store
 Thumbs.db
 desktop.ini
-.idea/
-.vscode/
-.history/
-.cursor/
-*.swp
 
-# Hosting
-.vercel/
-.netlify/
-
-# Fixtures: ignore real data, keep only safe samples
+# Fixtures: 実データは無視し、サンプルだけ残す
 tests/fixtures/securities_yen/**
 !tests/fixtures/securities_yen/SampleData.json
-
 tests/fixtures/securities_usd/**
 !tests/fixtures/securities_usd/SampleData.json
-
-# Extra guardrails for private data
-tests/fixtures/**/*private*.json
-tests/fixtures/**/*real*.json
-
-# Outputs
-screenshots/
-artifacts/
