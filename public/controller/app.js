@@ -129,6 +129,7 @@ export function startApp() {
   const plot = createPlot({
     node: need("#plot"),
     onPick: actions.placeProbe,
+    onZoom: actions.zoomViewAt,
   });
 
   /* ---- 描画 ------------------------------------------------------------- */

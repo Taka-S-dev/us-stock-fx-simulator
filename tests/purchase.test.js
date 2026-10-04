@@ -7,6 +7,7 @@ import {
   RANGE_LIMITS,
   scalePercent,
   scaleRange,
+  scaleRangeAt,
   validateField,
   validatePin,
   validatePurchase,
@@ -197,5 +198,32 @@ describe("scalePercent", () => {
   it("数値でなければ null", () => {
     expect(scalePercent(scale, NaN)).toBeNull();
     expect(scalePercent(scale, null)).toBeNull();
+  });
+});
+
+describe("scaleRangeAt", () => {
+  const spec = { min: 100, max: 250, gap: 2 };
+
+  it("基準点の画面上の位置を保ったまま狭める", () => {
+    const result = scaleRangeAt({ min: 140, max: 180 }, 0.5, 150, spec);
+    expect(result.max - result.min).toBeCloseTo(20, 8);
+    // 150 は左から 1/4 の位置のまま
+    expect((150 - result.min) / (result.max - result.min)).toBeCloseTo(0.25, 8);
+  });
+
+  it("端に当たったら位置を内側へずらして広げる", () => {
+    const result = scaleRangeAt({ min: 105, max: 125 }, 2, 110, spec);
+    expect(result.min).toBe(100);
+    expect(result.max - result.min).toBeCloseTo(40, 8);
+  });
+
+  it("許容範囲より広くならない", () => {
+    const result = scaleRangeAt({ min: 120, max: 240 }, 5, 180, spec);
+    expect(result).toEqual({ min: 100, max: 250 });
+  });
+
+  it("最小幅より狭くならない", () => {
+    const result = scaleRangeAt({ min: 159, max: 161 }, 0.01, 160, spec);
+    expect(result.max - result.min).toBeCloseTo(spec.gap, 8);
   });
 });

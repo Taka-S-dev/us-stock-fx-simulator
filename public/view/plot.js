@@ -639,11 +639,13 @@ export function buildFigure(
  * @param {HTMLElement} options.node グラフを描く要素
  * @param {(point:{fx:number, price:number}) => void} options.onPick
  *   クリック・タップ・ドラッグで座標が選ばれたときに呼ばれる
+ * @param {(point:{fx:number, price:number}, factor:number) => void} options.onZoom
+ *   Ctrl+ホイールで、その点を基準に拡大・縮小するときに呼ばれる
  */
 /** これより狭い描画域では、凡例・カラーバー・数値ラベルを外す */
 const COMPACT_WIDTH = 420;
 
-export function createPlot({ node, onPick }) {
+export function createPlot({ node, onPick, onZoom }) {
   let bound = false;
   /** 直近に描いた内容。幅が変わって compact が切り替わったとき描き直すのに使う */
   let lastRender = null;
@@ -834,6 +836,31 @@ export function createPlot({ node, onPick }) {
       node.addEventListener("touchcancel", () => {
         touchStart = null;
       });
+
+      /*
+        Ctrl+ホイールで、ポインタの下を基準に縦横を同じ倍率で拡大・縮小する。
+        Chromium 系と Firefox では、トラックパッドのピンチも ctrlKey 付きの wheel として届く
+        （Safari のピンチは別の gesture イベントで、ここでは扱わない）。
+        Ctrl なしのホイールはページのスクロールに任せる（グラフで止めない）。
+        ブラウザのページ拡大に取られないよう、グラフ上でだけ既定動作を止める。
+      */
+      node.addEventListener(
+        "wheel",
+        (event) => {
+          if (!event.ctrlKey) return;
+          const point = toDataPoint(event);
+          if (!point) return;
+          event.preventDefault();
+
+          // 行単位・ページ単位のホイールもピクセル相当に揃える
+          const unit =
+            event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
+          // マウス1ノッチ（約100px）で約1.2倍。細かく届くピンチは小刻みに効く
+          const factor = Math.exp(event.deltaY * unit * 0.002);
+          onZoom(point, factor);
+        },
+        { passive: false }
+      );
     },
 
     /**

@@ -8,6 +8,7 @@ import {
   nextId,
   RANGE_LIMITS,
   scaleRange,
+  scaleRangeAt,
   validateField,
   validatePin,
   validatePurchase,
@@ -163,6 +164,34 @@ export function createActions({ store, repository, preferences, notify }) {
         );
         actions.updateView({ priceMin: next.min, priceMax: next.max });
       }
+    },
+
+    /**
+     * 指定した点を動かさずに、縦横を同じ倍率で拡大・縮小する。
+     * 両軸の比率が保たれるので、等高線の形が崩れない。
+     * @param {{fx:number, price:number}} point
+     * @param {number} factor 1未満で狭める / 1より大きいと広げる
+     */
+    zoomViewAt(point, factor) {
+      const { view } = store.getState();
+      const fx = scaleRangeAt(
+        { min: view.fxMin, max: view.fxMax },
+        factor,
+        point.fx,
+        RANGE_LIMITS.fx
+      );
+      const price = scaleRangeAt(
+        { min: view.priceMin, max: view.priceMax },
+        factor,
+        point.price,
+        RANGE_LIMITS.price
+      );
+      actions.updateView({
+        fxMin: fx.min,
+        fxMax: fx.max,
+        priceMin: price.min,
+        priceMax: price.max,
+      });
     },
 
     /**

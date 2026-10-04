@@ -282,6 +282,35 @@ export function scaleRange({ min, max }, factor, spec) {
 }
 
 /**
+ * 指定した点を画面上の同じ位置に保ったまま表示範囲を拡大・縮小する。
+ * ポインタの下を基準にするホイール操作用（ボタン操作は scaleRange）。
+ *
+ * 端に当たったときは、拡大量ではなく位置のほうを内側へずらす。
+ * ホイールは連続して回すので、端で止まるより範囲いっぱいまで広がるほうが自然。
+ *
+ * @param {{min:number, max:number}} range
+ * @param {number} factor 1未満で狭める / 1より大きいと広げる
+ * @param {number} at 動かさない点
+ * @param {{min:number, max:number, gap:number}} spec
+ * @returns {{min:number, max:number}}
+ */
+export function scaleRangeAt({ min, max }, factor, at, spec) {
+  const width = Math.min(
+    Math.max((max - min) * factor, spec.gap),
+    spec.max - spec.min
+  );
+  const ratio = (at - min) / (max - min);
+
+  let nextMin = at - ratio * width;
+  nextMin = Math.min(Math.max(nextMin, spec.min), spec.max - width);
+
+  return {
+    min: Number(nextMin.toFixed(2)),
+    max: Number((nextMin + width).toFixed(2)),
+  };
+}
+
+/**
  * 表示範囲を許容値に収める。min/max の逆転と最小幅（gap）を保証する。
  * @param {{min:number, max:number}} next 変更後の希望値
  * @param {{min:number, max:number, gap:number}} spec
