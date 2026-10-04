@@ -55,7 +55,7 @@ export function createStore(initialState) {
  */
 export function createInitialState(overrides = {}) {
   return {
-    /** @type {Array<import("./purchase.js").LIMITS extends never ? never : any>} */
+    /** @type {Array<ReturnType<typeof import("./purchase.js").createPurchase>>} */
     purchases: [],
     /** 手数料・諸経費（円）。取得総額に加算する */
     extraCostYen: 0,

@@ -133,7 +133,7 @@ export function createCurrentPosition({
 }
 
 /**
- * ラベルと値の1行。dl の2列グリッドに流し込む前提で、要素の配列を返す。
+ * ラベルと値の1行。dl の2列グリッドに並べる前提で、要素の配列を返す。
  * @param {string} label
  * @param {string} value
  */

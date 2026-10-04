@@ -42,7 +42,7 @@ describe("validateField", () => {
     expect(validateField("fx", "5000").error).toContain("範囲");
   });
 
-  it("刻み幅の桁数に丸めて浮動小数のゴミを持ち込まない", () => {
+  it("刻み幅の桁数に丸めて浮動小数の誤差を持ち込まない", () => {
     // 為替は小数2桁（銭単位）まで、株数は整数
     expect(validateField("fx", "140.061").value).toBe(140.06);
     expect(validateField("price", "12.345").value).toBe(12.35);

@@ -147,7 +147,7 @@ export function validateField(field, raw) {
     };
   }
 
-  // 表示上の桁に丸めて、浮動小数のゴミが状態に入らないようにする
+  // 表示上の桁に丸めて、浮動小数の誤差が状態に入らないようにする
   const d = decimals(spec.step);
   return { value: Number(value.toFixed(d)), error: null };
 }
